@@ -12,7 +12,8 @@
 # Name of website
 title: sha0coder personal site
 description: adding extra randomness to the universe
-theme: jekyll-theme-minimal
+#theme: jekyll-theme-minimal
+remote_theme: pages-themes/hacker@v0.2.0
 
 # Your name to show in the footer
 author: sha0coder
@@ -24,9 +25,8 @@ author: sha0coder
 navbar-links:
   About Me: "aboutme"
   Resources:
-    - Beautiful Jekyll: "https://beautifuljekyll.com"
-    - Learn markdown: "https://www.markdowntutorial.com/"
-  Author's home: "https://deanattali.com"
+    - blog: "https://jolmos.blogspot.com/"
+  Author's home: "https://sha0coder.github.io"
 
 ################
 # --- Logo --- #
@@ -301,6 +301,7 @@ exclude:
 plugins:
   - jekyll-paginate
   - jekyll-sitemap
+  - jekyll-remote-theme
 
 # Beautiful Jekyll / Dean Attali
 # 2fc73a3a967e97599c9763d05e564189
