@@ -10,10 +10,10 @@
 ############################
 
 # Name of website
-title: My website
+title: sha0coder personal site
 
 # Your name to show in the footer
-author: Some Person
+author: sha0coder
 
 ###############################################
 # --- List of links in the navigation bar --- #
@@ -50,14 +50,14 @@ round-avatar: true
 # You can change the order that they show up on the page by changing the order here.
 # Uncomment the links you want to show and add your information to each one.
 social-network-links:
-  email: "someone@example.com"
+#  email: "someone@example.com"
   rss: true  # remove this line if you don't want to show an RSS link at the bottom
-  facebook: deanattali
-  github: daattali
-  twitter: daattali
-  patreon: DeanAttali
-  youtube: "@daattali"
-  whatsapp: 15551212
+  #facebook: deanattali
+  github: sha0coder
+  twitter: sha0coder
+#  patreon: DeanAttali
+  youtube: "@JesusOlmos-wm8ch"
+#  whatsapp: 15551212
 #  medium: yourname
 #  reddit: yourname or r/yoursubreddit
 #  linkedin: daattali
@@ -70,9 +70,9 @@ social-network-links:
 #  steam: deanat78
 #  twitch: yourname
 #  yelp: yourname
-#  telegram: yourname
+  telegram: sha0coder
 #  calendly: yourname
-#  mastodon: instance.url/@username
+  mastodon: infosec.exchange/@sha0coder
 #  bluesky: yourname
 #  ORCID: your ORCID ID
 #  google-scholar: your google scholar
@@ -86,7 +86,7 @@ social-network-links:
 
 # If you want your website to generate an RSS feed, provide a description
 # The URL for the feed will be https://<your_website>/feed.xml
-rss-description: This website is a virtual proof that I'm awesome
+rss-description: Random stuff
 
 ###########################
 # --- General options --- #
@@ -102,7 +102,7 @@ share-links-active:
 
 # How to display the link to your website in the footer
 # Remove this if you don't want a link in the footer
-url-pretty: "MyWebsite.com"
+url-pretty: "sha0coder.github.io"
 
 # Add the website title to the title of every page
 title-on-all-pages: true
