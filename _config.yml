@@ -11,6 +11,8 @@
 
 # Name of website
 title: sha0coder personal site
+description: adding extra randomness to the universe
+theme: jekyll-theme-minimal
 
 # Your name to show in the footer
 author: sha0coder
