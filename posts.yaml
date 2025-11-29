@@ -1,0 +1,61 @@
+# Configuración de Posts - Templo de Sabiduría
+# Edita este archivo para agregar/modificar writeups
+
+featured:
+  title: "Análisis Avanzado de Malware: Técnicas de Evasión"
+  category: "Seguridad"
+  icon: "🔒"
+  date: "2025-11-28"
+  readTime: "15 min lectura"
+  description: "Exploración profunda de las técnicas modernas de evasión utilizadas por malware sofisticado, incluyendo análisis de ofuscación, anti-debugging y técnicas de persistencia."
+  image: null  # Ruta a imagen opcional, ej: "images/malware-analysis.png"
+  link: "writeups/malware-evasion.html"
+
+posts:
+  - title: "Buffer Overflow en Aplicaciones Modernas"
+    category: "Exploit Development"
+    icon: "🛡️"
+    date: "2025-11-25"
+    description: "Análisis detallado de vulnerabilidades de buffer overflow y técnicas de explotación en sistemas con protecciones modernas."
+    link: "#"
+    image: null
+    
+  - title: "Rompiendo Cifrados Clásicos"
+    category: "Criptografía"
+    icon: "🔐"
+    date: "2025-11-20"
+    description: "Exploración de criptoanálisis aplicado a cifrados históricos y técnicas de ataque modernas contra implementaciones débiles."
+    link: "#"
+    image: null
+    
+  - title: "SSRF: De Básico a Avanzado"
+    category: "Web Security"
+    icon: "🌐"
+    date: "2025-11-15"
+    description: "Guía completa sobre Server-Side Request Forgery, desde conceptos básicos hasta técnicas avanzadas de explotación."
+    link: "#"
+    image: null
+    
+  - title: "Análisis de Binarios Ofuscados"
+    category: "Reverse Engineering"
+    icon: "⚙️"
+    date: "2025-11-10"
+    description: "Técnicas y herramientas para el análisis de binarios con ofuscación, empaquetado y anti-debugging."
+    link: "#"
+    image: null
+    
+  - title: "Kernel Exploitation Fundamentals"
+    category: "Sistemas Operativos"
+    icon: "💻"
+    date: "2025-11-05"
+    description: "Introducción a la explotación de vulnerabilidades en el kernel de Linux y Windows, con ejemplos prácticos."
+    link: "#"
+    image: null
+    
+  - title: "Análisis de Memoria RAM en Vivo"
+    category: "Forense Digital"
+    icon: "🔬"
+    date: "2025-11-01"
+    description: "Metodología para análisis forense de memoria en sistemas comprometidos utilizando herramientas modernas."
+    link: "#"
+    image: null
