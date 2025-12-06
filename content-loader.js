@@ -9,7 +9,6 @@ const parseYAML = (yamlText) => {
     const result = { posts: [] };
     let currentSection = null;
     let currentPost = null;
-    let indent = 0;
 
     for (let line of lines) {
         // Ignorar comentarios y líneas vacías
@@ -20,13 +19,14 @@ const parseYAML = (yamlText) => {
 
         // Sección principal (featured o posts)
         if (currentIndent === 0 && line.includes(':')) {
-            const [key, value] = line.split(':').map(s => s.trim());
-            if (key === 'featured') {
+            const [key] = line.split(':');
+            if (key.trim() === 'featured') {
                 currentSection = 'featured';
                 result.featured = {};
                 currentPost = result.featured;
-            } else if (key === 'posts') {
+            } else if (key.trim() === 'posts') {
                 currentSection = 'posts';
+                currentPost = null;
             }
             continue;
         }
@@ -35,25 +35,40 @@ const parseYAML = (yamlText) => {
         if (line.trim().startsWith('- ')) {
             currentPost = {};
             result.posts.push(currentPost);
-            // Extraer el primer campo
+
+            // Extraer el primer campo si existe
             const content = line.substring(line.indexOf('-') + 1).trim();
             if (content.includes(':')) {
-                const [key, value] = content.split(':').map(s => s.trim());
-                currentPost[key] = value.replace(/['"]/g, '');
+                const colonIndex = content.indexOf(':');
+                const key = content.substring(0, colonIndex).trim();
+                let value = content.substring(colonIndex + 1).trim();
+
+                // Limpiar comillas
+                value = value.replace(/^["']|["']$/g, '');
+                if (value === 'null') value = null;
+
+                currentPost[key] = value;
             }
             continue;
         }
 
         // Campos dentro de un objeto
         if (currentPost && line.includes(':')) {
-            const [key, ...valueParts] = line.split(':');
-            let value = valueParts.join(':').trim();
+            const colonIndex = line.indexOf(':');
+            const key = line.substring(0, colonIndex).trim();
+            let value = line.substring(colonIndex + 1).trim();
 
             // Limpiar comillas y null
             value = value.replace(/^["']|["']$/g, '');
+
+            // Limpiar comentarios inline
+            if (value.includes('#')) {
+                value = value.split('#')[0].trim();
+            }
+
             if (value === 'null') value = null;
 
-            currentPost[key.trim()] = value;
+            currentPost[key] = value;
         }
     }
 
@@ -66,6 +81,9 @@ async function loadContent() {
         const response = await fetch('posts.yaml');
         const yamlText = await response.text();
         const data = parseYAML(yamlText);
+
+        console.log('📦 Datos parseados:', data);
+        console.log('📝 Posts encontrados:', data.posts ? data.posts.length : 0);
 
         // Renderizar featured post
         if (data.featured) {
@@ -104,6 +122,13 @@ function renderFeaturedPost(featured) {
             </svg>
         </div>`;
 
+    const linksHtml = `
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <a href="${featured.link_es || '#'}" class="btn-primary">🇪🇸 Español</a>
+            <a href="${featured.link_en || '#'}" class="btn-primary" style="background: linear-gradient(135deg, #059669, #047857);">🇬🇧 English</a>
+        </div>
+    `;
+
     featuredCard.innerHTML = `
         <div class="featured-badge">Destacado</div>
         <div class="featured-content">
@@ -111,12 +136,11 @@ function renderFeaturedPost(featured) {
             <p class="featured-meta">
                 <span class="meta-item">📅 ${formatDate(featured.date)}</span>
                 <span class="meta-item">🏷️ ${featured.category}</span>
-                <span class="meta-item">⏱️ ${featured.readTime}</span>
             </p>
             <p class="featured-description">
                 ${featured.description}
             </p>
-            <a href="${featured.link}" class="btn-primary">Leer Writeup</a>
+            ${linksHtml}
         </div>
         <div class="featured-image">
             ${imageHtml}
@@ -141,7 +165,10 @@ function renderPostsGrid(posts) {
             </p>
             <div class="card-footer">
                 <span class="card-date">${formatDate(post.date)}</span>
-                <a href="${post.link}" class="card-link">Leer más →</a>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="${post.link_es || '#'}" class="card-link" title="Español">🇪🇸 ES</a>
+                    <a href="${post.link_en || '#'}" class="card-link" title="English">🇬🇧 EN</a>
+                </div>
             </div>
         </article>
     `).join('');

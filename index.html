@@ -1,273 +1,131 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Templo de Sabiduría - Un espacio dedicado a compartir conocimiento y writeups sobre tecnología, seguridad y programación">
-    <title>Templo de Sabiduría | Writeups &amp; Tecnología</title>
+    <meta name="description" content="sha0coder - Security Research, Reverse Engineering, Malware Analysis">
+    <title>sha0coder@github:~$</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <!-- Background Elements -->
-    <div class="mystical-bg">
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
+    <div class="terminal">
+        <div class="terminal-header">
+            <span class="user">sha0coder@github</span><span class="separator">:</span><span class="path">~</span><span
+                class="prompt">$</span>
+        </div>
+
+        <div class="terminal-body">
+            <!-- Setup Section -->
+            <section class="section">
+                <div class="section-header">
+                    <span class="prompt">[</span><span class="highlight">setup</span><span class="prompt">]</span>
+                </div>
+                <div class="section-content">
+                    <p class="description">Security researcher | Malware analyst | Reverse engineer</p>
+                    <div class="link-item">
+                        <span class="bullet">></span>
+                        <a href="https://github.com/sha0coder" target="_blank" rel="noopener">github.com/sha0coder</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Projects Section -->
+            <section class="section">
+                <div class="section-header">
+                    <span class="prompt">[</span><span class="highlight">projects</span><span class="prompt">]</span>
+                </div>
+                <div class="section-content">
+                    <div class="project">
+                        <div class="project-name">
+                            <span class="bullet">></span>
+                            <a href="https://github.com/sha0coder/scemu" target="_blank" rel="noopener">scemu</a>
+                        </div>
+                        <p class="project-desc">x86/x64 emulator for shellcode analysis and malware research</p>
+                    </div>
+
+                    <div class="project">
+                        <div class="project-name">
+                            <span class="bullet">></span>
+                            <a href="https://github.com/sha0coder/libscemu" target="_blank" rel="noopener">libscemu</a>
+                        </div>
+                        <p class="project-desc">Core library for x86/x64 PE emulation and debugging</p>
+                    </div>
+
+                    <div class="project">
+                        <div class="project-name">
+                            <span class="bullet">></span>
+                            <a href="https://github.com/sha0coder/mwemu" target="_blank" rel="noopener">mwemu</a>
+                        </div>
+                        <p class="project-desc">Windows malware emulator for automated analysis</p>
+                    </div>
+
+                    <div class="project">
+                        <div class="project-name">
+                            <span class="bullet">></span>
+                            <a href="https://github.com/sha0coder/rwtools" target="_blank" rel="noopener">rwtools</a>
+                        </div>
+                        <p class="project-desc">Collection of reverse engineering utilities</p>
+                    </div>
+
+                    <div class="project">
+                        <div class="project-name">
+                            <span class="bullet">></span>
+                            <a href="https://github.com/sha0coder/r2sarif" target="_blank" rel="noopener">r2sarif</a>
+                        </div>
+                        <p class="project-desc">Radare2 integration with SARIF format</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Resources Section -->
+            <section class="section">
+                <div class="section-header">
+                    <span class="prompt">[</span><span class="highlight">resources</span><span class="prompt">]</span>
+                </div>
+                <div class="section-content">
+                    <div class="resource">
+                        <div class="resource-name">
+                            <span class="bullet">></span>
+                            <a href="writeups/noise-defense-en.html">Wave Hacking - Creating a Noise Shield</a>
+                        </div>
+                        <p class="resource-desc">Practical guide to wave canceling and noise defense</p>
+                    </div>
+
+                    <div class="resource">
+                        <div class="resource-name">
+                            <span class="bullet">></span>
+                            <a href="#">Shellcode Analysis Techniques</a>
+                        </div>
+                        <p class="resource-desc">Advanced methods for analyzing obfuscated shellcode</p>
+                    </div>
+
+                    <div class="resource">
+                        <div class="resource-name">
+                            <span class="bullet">></span>
+                            <a href="#">Malware Unpacking Guide</a>
+                        </div>
+                        <p class="resource-desc">Automated and manual unpacking strategies</p>
+                    </div>
+
+                    <div class="resource">
+                        <div class="resource-name">
+                            <span class="bullet">></span>
+                            <a href="#">Anti-Analysis Techniques</a>
+                        </div>
+                        <p class="resource-desc">Common evasion methods and countermeasures</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <div class="footer">
+                <span class="user">sha0coder@github</span><span class="separator">:</span><span
+                    class="path">~</span><span class="prompt">$ █</span>
+            </div>
+        </div>
     </div>
-
-    <!-- Header/Hero Section -->
-    <header class="hero" id="hero">
-        <div class="hero-content">
-            <div class="temple-icon">
-                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 90 L10 50 L50 20 L90 50 L90 90 Z" fill="none" stroke="currentColor" stroke-width="2" />
-                    <rect x="20" y="60" width="15" height="30" fill="currentColor" opacity="0.3" />
-                    <rect x="42.5" y="60" width="15" height="30" fill="currentColor" opacity="0.3" />
-                    <rect x="65" y="60" width="15" height="30" fill="currentColor" opacity="0.3" />
-                    <polygon points="5,50 50,15 95,50" fill="none" stroke="currentColor" stroke-width="2" />
-                </svg>
-            </div>
-            <h1 class="hero-title">Templo de Sabiduría</h1>
-            <p class="hero-subtitle">Conocimiento compartido sobre tecnología, seguridad y más allá</p>
-            <div class="scroll-indicator">
-                <span>Explora</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M19 12l-7 7-7-7" />
-                </svg>
-            </div>
-        </div>
-    </header>
-
-    <!-- Navigation -->
-    <nav class="nav" id="nav">
-        <div class="nav-container">
-            <div class="nav-brand">🏛️ Templo</div>
-            <ul class="nav-menu">
-                <li><a href="#hero" class="nav-link active">Inicio</a></li>
-                <li><a href="#writeups" class="nav-link">Writeups</a></li>
-                <li><a href="#about" class="nav-link">Acerca</a></li>
-            </ul>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main>
-        <!-- Featured Writeup Section -->
-        <section class="featured-section">
-            <div class="container">
-                <h2 class="section-title">Writeup Destacado</h2>
-                <div class="featured-card">
-                    <div class="featured-badge">Destacado</div>
-                    <div class="featured-content">
-                        <h3>Análisis Avanzado de Malware: Técnicas de Evasión</h3>
-                        <p class="featured-meta">
-                            <span class="meta-item">📅 28 Nov 2025</span>
-                            <span class="meta-item">🏷️ Seguridad</span>
-                            <span class="meta-item">⏱️ 15 min lectura</span>
-                        </p>
-                        <p class="featured-description">
-                            Exploración profunda de las técnicas modernas de evasión utilizadas por malware sofisticado,
-                            incluyendo análisis de ofuscación, anti-debugging y técnicas de persistencia.
-                        </p>
-                        <a href="#" class="btn-primary">Leer Writeup</a>
-                    </div>
-                    <div class="featured-image">
-                        <div class="placeholder-image">
-                            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                <rect width="200" height="200" fill="url(#grad1)" />
-                                <defs>
-                                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
-                                        <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
-                                    </linearGradient>
-                                </defs>
-                                <text x="100" y="100" text-anchor="middle" fill="white" font-size="60"
-                                    font-family="monospace">🔒</text>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Writeups Grid -->
-        <section class="writeups-section" id="writeups">
-            <div class="container">
-                <h2 class="section-title">Todos los Writeups</h2>
-                <div class="writeups-grid">
-                    <!-- Writeup Card 1 -->
-                    <article class="writeup-card">
-                        <div class="card-header">
-                            <div class="card-icon">🛡️</div>
-                            <span class="card-category">Exploit Development</span>
-                        </div>
-                        <h3 class="card-title">Buffer Overflow en Aplicaciones Modernas</h3>
-                        <p class="card-description">
-                            Análisis detallado de vulnerabilidades de buffer overflow y técnicas de explotación en
-                            sistemas con protecciones modernas.
-                        </p>
-                        <div class="card-footer">
-                            <span class="card-date">25 Nov 2025</span>
-                            <a href="#" class="card-link">Leer más →</a>
-                        </div>
-                    </article>
-
-                    <!-- Writeup Card 2 -->
-                    <article class="writeup-card">
-                        <div class="card-header">
-                            <div class="card-icon">🔐</div>
-                            <span class="card-category">Criptografía</span>
-                        </div>
-                        <h3 class="card-title">Rompiendo Cifrados Clásicos</h3>
-                        <p class="card-description">
-                            Exploración de criptoanálisis aplicado a cifrados históricos y técnicas de ataque modernas
-                            contra implementaciones débiles.
-                        </p>
-                        <div class="card-footer">
-                            <span class="card-date">20 Nov 2025</span>
-                            <a href="#" class="card-link">Leer más →</a>
-                        </div>
-                    </article>
-
-                    <!-- Writeup Card 3 -->
-                    <article class="writeup-card">
-                        <div class="card-header">
-                            <div class="card-icon">🌐</div>
-                            <span class="card-category">Web Security</span>
-                        </div>
-                        <h3 class="card-title">SSRF: De Básico a Avanzado</h3>
-                        <p class="card-description">
-                            Guía completa sobre Server-Side Request Forgery, desde conceptos básicos hasta técnicas
-                            avanzadas de explotación.
-                        </p>
-                        <div class="card-footer">
-                            <span class="card-date">15 Nov 2025</span>
-                            <a href="#" class="card-link">Leer más →</a>
-                        </div>
-                    </article>
-
-                    <!-- Writeup Card 4 -->
-                    <article class="writeup-card">
-                        <div class="card-header">
-                            <div class="card-icon">⚙️</div>
-                            <span class="card-category">Reverse Engineering</span>
-                        </div>
-                        <h3 class="card-title">Análisis de Binarios Ofuscados</h3>
-                        <p class="card-description">
-                            Técnicas y herramientas para el análisis de binarios con ofuscación, empaquetado y
-                            anti-debugging.
-                        </p>
-                        <div class="card-footer">
-                            <span class="card-date">10 Nov 2025</span>
-                            <a href="#" class="card-link">Leer más →</a>
-                        </div>
-                    </article>
-
-                    <!-- Writeup Card 5 -->
-                    <article class="writeup-card">
-                        <div class="card-header">
-                            <div class="card-icon">💻</div>
-                            <span class="card-category">Sistemas Operativos</span>
-                        </div>
-                        <h3 class="card-title">Kernel Exploitation Fundamentals</h3>
-                        <p class="card-description">
-                            Introducción a la explotación de vulnerabilidades en el kernel de Linux y Windows, con
-                            ejemplos prácticos.
-                        </p>
-                        <div class="card-footer">
-                            <span class="card-date">5 Nov 2025</span>
-                            <a href="#" class="card-link">Leer más →</a>
-                        </div>
-                    </article>
-
-                    <!-- Writeup Card 6 -->
-                    <article class="writeup-card">
-                        <div class="card-header">
-                            <div class="card-icon">🔬</div>
-                            <span class="card-category">Forense Digital</span>
-                        </div>
-                        <h3 class="card-title">Análisis de Memoria RAM en Vivo</h3>
-                        <p class="card-description">
-                            Metodología para análisis forense de memoria en sistemas comprometidos utilizando
-                            herramientas modernas.
-                        </p>
-                        <div class="card-footer">
-                            <span class="card-date">1 Nov 2025</span>
-                            <a href="#" class="card-link">Leer más →</a>
-                        </div>
-                    </article>
-                </div>
-            </div>
-        </section>
-
-        <!-- About Section -->
-        <section class="about-section" id="about">
-            <div class="container">
-                <div class="about-content">
-                    <h2 class="section-title">Acerca del Templo</h2>
-                    <p class="about-text">
-                        El <strong>Templo de Sabiduría</strong> es un espacio dedicado a la difusión del conocimiento
-                        en áreas de tecnología, seguridad informática, desarrollo y análisis técnico. Aquí encontrarás
-                        writeups detallados, análisis profundos y recursos educativos para expandir tus habilidades.
-                    </p>
-                    <p class="about-text">
-                        Cada writeup está cuidadosamente elaborado para proporcionar no solo soluciones, sino también
-                        el contexto y el razonamiento detrás de cada técnica, fomentando un aprendizaje profundo y
-                        duradero.
-                    </p>
-                    <div class="about-stats">
-                        <div class="stat-item">
-                            <div class="stat-number">50+</div>
-                            <div class="stat-label">Writeups</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">10K+</div>
-                            <div class="stat-label">Lectores</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">25+</div>
-                            <div class="stat-label">Temas</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Templo de Sabiduría</h3>
-                    <p>Compartiendo conocimiento desde 2025</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Enlaces</h4>
-                    <ul class="footer-links">
-                        <li><a href="#hero">Inicio</a></li>
-                        <li><a href="#writeups">Writeups</a></li>
-                        <li><a href="#about">Acerca</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contacto</h4>
-                    <p>github.com/sha0coder</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 Templo de Sabiduría. Todo el conocimiento es libre.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="content-loader.js"></script>
-    <script src="script.js"></script>
 </body>
 
 </html>

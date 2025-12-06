@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Untitled Writeup | Templo de Sabiduría</title>
+    <meta name="description" content="A writeup from Templo de Sabiduría">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        /* Estilos específicos para writeups */
+        .writeup-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--color-bg-tertiary);
+            border-radius: 16px;
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-primary-light);
+            text-decoration: none;
+            margin-bottom: 2rem;
+            transition: all var(--transition-fast);
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            color: var(--color-accent-light);
+            transform: translateX(-5px);
+        }
+
+        .writeup-header {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .writeup-title {
+            font-size: clamp(2rem, 5vw, 3rem);
+            background: linear-gradient(135deg, var(--color-primary-light), var(--color-accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .writeup-meta {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            color: var(--color-text-muted);
+            font-size: 0.95rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .writeup-content {
+            line-height: 1.8;
+        }
+
+        .writeup-content h2 {
+            color: var(--color-primary-light);
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            border-left: 4px solid var(--color-primary);
+            padding-left: 1rem;
+        }
+
+        .writeup-content h3 {
+            color: var(--color-text-primary);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+        }
+
+        .writeup-content h4 {
+            color: var(--color-text-secondary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.2rem;
+        }
+
+        .writeup-content p {
+            color: var(--color-text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .writeup-content ul,
+        .writeup-content ol {
+            color: var(--color-text-secondary);
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .writeup-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .writeup-content code {
+            background: var(--color-bg-dark);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            color: var(--color-accent-light);
+            font-family: var(--font-mono);
+            font-size: 0.9em;
+        }
+
+        .writeup-content pre {
+            background: var(--color-bg-dark);
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .writeup-content pre code {
+            background: none;
+            padding: 0;
+            color: var(--color-text-primary);
+        }
+
+        .writeup-content blockquote {
+            border-left: 4px solid var(--color-accent);
+            padding-left: 1.5rem;
+            margin: 2rem 0;
+            color: var(--color-text-secondary);
+            font-style: italic;
+        }
+
+        .writeup-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 2rem 0;
+            box-shadow: var(--shadow-md);
+        }
+
+        .writeup-content a {
+            color: var(--color-primary-light);
+            transition: color var(--transition-fast);
+        }
+
+        .writeup-content a:hover {
+            color: var(--color-accent-light);
+        }
+
+        .note-box {
+            background: rgba(147, 51, 234, 0.1);
+            border-left: 4px solid var(--color-primary);
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            margin: 2rem 0;
+        }
+
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid var(--color-accent);
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            margin: 2rem 0;
+        }
+
+        .code-header {
+            background: var(--color-bg-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px 8px 0 0;
+            color: var(--color-text-muted);
+            font-size: 0.875rem;
+            font-family: var(--font-mono);
+            border: 1px solid var(--color-border);
+            border-bottom: none;
+        }
+
+        .code-header + pre {
+            margin-top: 0;
+            border-radius: 0 0 8px 8px;
+        }
+
+        @media (max-width: 768px) {
+            .writeup-container {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="writeup-container">
+        <a href="../index.html" class="back-link">
+            ← Back to Home
+        </a>
+
+        <header class="writeup-header">
+            <h1 class="writeup-title">Untitled Writeup</h1>
+            <div class="writeup-meta">
+                <span class="meta-item">📅 November 29, 2025</span>
+                <span class="meta-item">🏷️ General</span>
+            </div>
+        </header>
+
+        <article class="writeup-content">
+<h1>Noise hacking maths</h1>
+
+
+<h2>The Problem - Audible Wave Leak</h2>
+
+<p>The restaurant that is next to my department is playing salsa music all the days, and I work from home but lukily my windows are soundproof. There is one unique instrument that is common in all salsa songs that leaks passing my sound-insulation, and is an anoying repetitive sound, thats enought to focus in cancelling it as a priority. This sound is a kind of repetitive drum.</p>
+
+
+<h2>The easy bad solution</h2>
+
+<p>White noise fills all the frecuency gaps, It doesn't cancel the sound but if it was perfect will fill all the audible. But it's not convinient hearing white noise many hours so I needed to create an invisible anti-wave defense.</p>
+
+
+<h2>Signal Decomposition</h2>
+
+<p>The purpose is extracting information of the specific wave of the specific insturment that leaks the sound-insulation.</p>
+
+<p>- frecuency - power (dbs) - amplitude - waveform (sinusoidal, squarewave, triangle, sawtooth or complex ones) - electromagnetic or pressure wave</p>
+
+
+<ol>
+<li>record the music (with all the instruments)</li>
+<li>soundhoud to identify the song</li>
+<li>youtube2mp3 to download the mp3</li>
+<li>openmusic.ai to separate the dump using AI</li>
+<li>ffmpeg to do the wav conversion </li>
+</ol>
+    <code>ffmpeg -i shit<em>drums.mp3 -ar 44100 -ac 2 shit</em>drums.wav</code>
+<ol>
+<li>create an spectogram with sox</li>
+<li>feh -F spectrogram.png</li>
+</ol>
+
+
+<p>openmunsic separated well the instruments but in the drums track sound two differnt drumps, and I need to distinguish them, but the repetition frecuency of every drum is different so we can identify the target wave, and as expected is low frequency because of that trespasses the walls.</p>
+
+<p>It's necessary to pinpoint the sox parameters to display well the wave you need, it worth to read sox manpage.</p>
+
+<p>Main options:</p>
+
+<h3>Wave Frecuency Sample Rate </h3>
+
+<p>The manpage explains it perfecly: "Gives the sample rate in Hz (or kHz if appended with <code>k') of the file" For instance for a kilo herthz unit </code>-r 10k<code> In this case the freq is under the khz, i pinpointed </code>-r 100` for 100 hertz</p>
+
+<h3>Time vs Frecuency - Repetition Frequency</h3>
+
+<p>I pinpointed -x value to display it in interval of seconds.</p>
+
+<h3>Remove Noise - Cleaning the Drums</h3>
+
+<p>This is for cleaning the 2 drum instruments removing noise and the awesome tool sox does this automatically but if you specify the seconds that take in startng the drums, then can learn the initial noise and remove it. How to know in which second starts? well I put the time unit in seconds with -x param and I can visualize the drum I want and calculate the seconds adapting -x</p>
+
+
+<pre><code>sox shit_drums.wav -n spectrogram -x 4096 -y 1024 -X 100 -o spectrogram.png
+</code></pre>
+
+<p>sox is really great, don’t you agree? and you also have pysox!</p>
+
+
+
+
+
+
+
+
+
+
+<h2>Thanks</h2>
+
+<p>hardwarehackinges</p>
+
+ 
+
+
+
+        </article>
+
+        <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--color-border);">
+            <a href="../index.html" class="back-link">
+                ← Back to Home
+            </a>
+        </div>
+    </div>
+
+    <div class="mystical-bg">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+</body>
+</html>
