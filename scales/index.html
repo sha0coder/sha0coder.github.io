@@ -305,12 +305,29 @@ sample.bpf.o: ELF 64-bit LSB relocatable, eBPF, version 1 (SYSV),
             <code>monero-wallet-gui</code></li>
         </ul>
 
-        <h3>Campaign / distribution <span class="small dim">(per public reporting)</span></h3>
+        <h3>Campaign / distribution <span class="small dim">(per public &amp; community reporting)</span></h3>
         <ul class="small">
-            <li>Campaign: <strong>Atomic Arch</strong> — Sonatype-2026-003775</li>
-            <li>Threat actor handle: <code>arojas</code>; 408 hijacked AUR packages</li>
-            <li>npm dropper: <code>atomic-lockfile@1.4.2</code>, payload at <code>src/hooks/deps</code></li>
+            <li>Campaign: <strong>Atomic Arch</strong> — Sonatype-2026-003775; ~400+ hijacked
+            AUR packages across waves</li>
+            <li><strong>Attribution note — <code>arojas</code> is <em>not</em> the actor.</strong>
+            Early press cited the handle <code>arojas</code>, but that identity was
+            <strong>forged via git commit-author spoofing</strong> to impersonate a legitimate
+            Arch/KDE maintainer. AUR is git-based and the commit author field is trivially
+            forgeable, so <code>arojas</code> is a <em>victim of impersonation</em>, not the
+            attacker.</li>
+            <li>Attacker-controlled accounts (per community IOCs): npm publisher
+            <code>herbsobering</code> (published <code>atomic-lockfile</code> and
+            <code>js-digest</code>); AUR uploader handles <code>krisztinavarga</code>,
+            <code>custodiatovar</code>, <code>veramagalhaes</code></li>
+            <li>npm dropper: <code>atomic-lockfile</code> (payload at <code>src/hooks/deps</code>),
+            second wave via <code>js-digest</code></li>
+            <li>Additional infrastructure: <code>github.com/fardewoak/nodejs-argo</code>
+            (reverse-shell / proxy tooling)</li>
         </ul>
+        <p class="small dim">Account handles, npm publisher and infrastructure above come from
+        public and community reporting (e.g. the <a href="https://github.com/lenucksi/aur-malware-check">aur-malware-check</a>
+        consolidation), not from the sample. The <code>deps</code> SHA-256 listed earlier
+        matches the ELF hash published there.</p>
 
     </div>
 </main>
