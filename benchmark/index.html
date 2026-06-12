@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LLM Benchmark — a reproducible cognitive battery for language models: logic, calculus, WISC-V/WAIS-IV-inspired subtests, number theory, philosophy and creativity.">
+    <title>LLM Benchmark — sha0coder</title>
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav>
+    <div class="wrap">
+        <a class="logo" href="../">sha0<span>coder</span></a>
+        <ul>
+            <li><a href="../#projects">Projects</a></li>
+            <li><a class="active" href="./">LLM Benchmark</a></li>
+            <li><a href="../#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <div class="kicker">Research chapter</div>
+        <h1>LLM Benchmark</h1>
+        <p class="dim">A reproducible cognitive battery for language models, scored 0–100.
+        Designed to compare small local models against each other and against frontier
+        models, with deterministic grading wherever possible.</p>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+
+        <h2>Why another benchmark</h2>
+        <p>Public leaderboards are easy to overfit and rarely tell you how a 2–8&nbsp;GB local
+        model behaves on the kind of reasoning humans are actually tested on. This battery
+        borrows its structure from psychometrics — including subtests <em>inspired by</em>
+        WISC-V and WAIS-IV (digit span, letter–number sequencing, similarities, matrices,
+        mental arithmetic) — and adds domains where correctness is verifiable by code.</p>
+        <p class="small dim">The WISC-V / WAIS-IV items are original re-creations of the
+        subtest <em>formats</em>; the real instruments are copyrighted and none of their
+        content is used. The question bank is in Spanish, which also makes it a mild
+        out-of-distribution test for models tuned mainly on English.</p>
+
+        <h2>The battery</h2>
+        <table>
+            <tr><th>Category</th><th>Items</th><th>Grading</th></tr>
+            <tr><td>Logic</td><td class="num">8</td><td>Deterministic — exact / multiple choice / numeric</td></tr>
+            <tr><td>Calculus</td><td class="num">8</td><td>Deterministic — numeric with tolerance</td></tr>
+            <tr><td>WISC-V inspired</td><td class="num">10</td><td>Deterministic — spans, matrices, arithmetic, vocabulary</td></tr>
+            <tr><td>WAIS-IV inspired</td><td class="num">10</td><td>Deterministic — adult-level variants</td></tr>
+            <tr><td>Number theory</td><td class="num">6</td><td>Deterministic — n-digit primes verified with <code>sympy</code>, π digits against <code>mpmath</code></td></tr>
+            <tr><td>Philosophy</td><td class="num">6</td><td>LLM judge with explicit rubrics (Gettier, Popper, Hume, mind–body…)</td></tr>
+            <tr><td>Creativity</td><td class="num">7</td><td>Mostly objective — remote associations with unique answers, automatic constraint checks (word counts, acrostics) weighted 40/60 with a judge</td></tr>
+        </table>
+
+        <h2>Methodology</h2>
+        <p>Every item scores 0–1. Deterministic items are pass/fail; judged items use a
+        rubric-driven LLM judge that returns a 0–10 score with a justification, which is
+        stored for audit. The category score is the mean of its items, and the
+        <strong>final score (0–100)</strong> is the mean of the seven categories, equally
+        weighted.</p>
+        <ul>
+            <li><strong>Fixed judge.</strong> All models in a comparison are graded by the
+            same judge model, so judged categories are comparable across runs.</li>
+            <li><strong>Format contract.</strong> Models must end with a
+            <code>RESPUESTA:</code> line that graders parse; tolerant extraction and
+            Spanish number formats (<code>72,25</code>) are handled.</li>
+            <li><strong>Backends.</strong> The harness speaks to the Anthropic API, Ollama,
+            and the Codex / Claude Code CLIs, so local and frontier models run through the
+            exact same pipeline.</li>
+        </ul>
+
+        <h2 id="results">Results</h2>
+        <!-- RESULTS:START -->
+        <p class="dim"><em>Evaluation in progress — six local models
+        (granite3-dense:8b, qwen3:4b-instruct, qwen3:1.7b, qwen3:4b, gemma4:e2b,
+        gemma4:e4b) are currently being scored with Claude Opus as fixed judge.
+        The ranking table and per-model reports will be published here.</em></p>
+        <!-- RESULTS:END -->
+
+        <h2>Reports</h2>
+        <p class="small dim">Each run produces a self-contained HTML report — final score,
+        per-category radar chart and the full item-by-item detail (question, model answer,
+        grading).</p>
+        <!-- REPORTS:START -->
+        <!-- REPORTS:END -->
+
+    </div>
+</main>
+
+<footer>
+    <div class="wrap">
+        <div>© Jesús Olmos · <a href="../">home</a></div>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Scales: an eBPF-based infostealer and rootkit targeting Arch Linux. Statically carving the embedded eBPF object out of the deps loader (Atomic Arch AUR campaign) — no execution, no kernel — plus IOCs.">
+    <title>Scales — carving an embedded eBPF rootkit — sha0coder</title>
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav>
+    <div class="wrap">
+        <a class="logo" href="../">sha0<span>coder</span></a>
+        <ul>
+            <li><a href="../#projects">Projects</a></li>
+            <li><a href="../#writeups">Writeups</a></li>
+            <li><a href="../#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <div class="kicker">Writeup · scales.bpf</div>
+        <h1>Scales — carving an embedded eBPF rootkit</h1>
+        <p class="dim" style="font-size:19px;line-height:1.4;margin-bottom:6px;">
+        <strong>Scales</strong>: an eBPF-based infostealer &amp; rootkit targeting Arch Linux.</p>
+        <p class="small dim"><time datetime="2026-06-12">Published 2026-06-12</time></p>
+        <p class="dim">A lot of eBPF tooling — and a growing slice of eBPF malware —
+        ships the kernel-side program embedded inside the user-space loader. This is a
+        small, fully static way to pull that program out: no execution, no kernel, no
+        root. It worked on a real rootkit sample in one pass, and the same trick
+        generalizes to most libbpf-based binaries.</p>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+
+        <h2>The shape of the problem</h2>
+        <p>A modern eBPF agent is two halves in one file. The half you see is an ordinary
+        x86-64 user-space program; the half that does the work is an eBPF object compiled
+        for the <code>EM_BPF</code> machine and loaded into the kernel at runtime. With
+        <strong>libbpf</strong> the loader almost always hands that object to
+        <code>bpf_object__open_mem(buf, size, opts)</code> — which means the eBPF ELF has to
+        sit, uncompressed, somewhere in the binary's image. <code>bpf_object__open_mem</code>
+        does <em>not</em> decompress anything; whatever you give it must already be a valid
+        ELF. That is the whole weakness we lean on.</p>
+
+        <p>The sample that motivated this was a stripped Rust PIE dynamically linked against
+        <code>libbpf.so.1</code> — the <code>deps</code> credential stealer from the June 2026
+        <a href="https://www.sonatype.com/blog/atomic-arch-npm-campaign-adds-malicious-dependency"><strong>Atomic
+        Arch</strong></a> AUR supply-chain campaign (Sonatype-2026-003775), in which a single
+        actor adopted 408 orphaned AUR packages and laced their PKGBUILDs to drop this binary.
+        Its <code>.rodata</code> showed entropy above 7, which
+        reads like "packed" — but it is not. The high entropy is simply a dense eBPF object
+        (bytecode + BTF + maps) embedded verbatim. Confirming that took two observations:
+        the import table mentions <code>bpf_object__open_mem</code> /
+        <code>bpf_object__load</code> / <code>bpf_program__attach</code>, and the single call
+        site spells the payload out directly:</p>
+
+<pre><code>lea  rdi, [0x5555555864f9]   ; buffer
+mov  esi, 0xce28            ; size = 52776 bytes
+call qword [0x555555837508] ; bpf_object__open_mem(buf, 0xce28, opts)</code></pre>
+
+        <p>At that address: <code>7f 45 4c 46 02 01 01 00 … 01 00 f7 00</code> — ELF magic,
+        <code>ELFCLASS64</code>, <code>e_machine = 0xF7</code> (<code>EM_BPF</code>). No
+        compression, no XOR. The "packed payload" is a plain embedded ELF.</p>
+
+        <h2>The static carve</h2>
+        <p>You do not even need the call site. Because the embedded program is a real ELF,
+        you can scan the file for an <code>EM_BPF</code> header and recover its exact length
+        from the section-header table. Clang/LLVM lays the section header table out last in a
+        BPF relocatable object, so <code>e_shoff + e_shnum × e_shentsize</code> is the end of
+        the object — carve from the magic to there.</p>
+
+<pre><code>#!/usr/bin/env python3
+"""Static unpacker for embedded eBPF objects.
+Reads the file, never executes it. Scans for an EM_BPF ELF, computes its
+real size from the section-header table, and carves it out."""
+import struct, sys, hashlib
+
+EM_BPF = 0xF7
+
+def carve_bpf(path):
+    data = open(path, "rb").read()
+    out, i = [], 0
+    while True:
+        i = data.find(b"\x7fELF", i)
+        if i &lt; 0:
+            break
+        ei_class  = data[i + 4]                               # 2 = ELFCLASS64
+        e_machine = struct.unpack_from("&lt;H", data, i + 18)[0]
+        if ei_class == 2 and e_machine == EM_BPF:
+            e_shoff   = struct.unpack_from("&lt;Q", data, i + 0x28)[0]
+            e_shentsz = struct.unpack_from("&lt;H", data, i + 0x3A)[0]
+            e_shnum   = struct.unpack_from("&lt;H", data, i + 0x3C)[0]
+            end  = e_shoff + e_shentsz * e_shnum              # SHT is last in BPF .o
+            out.append((i, data[i:i + end]))
+        i += 4
+    return out
+
+if __name__ == "__main__":
+    src = sys.argv[1] if len(sys.argv) &gt; 1 else "sample"
+    for n, (off, blob) in enumerate(carve_bpf(src)):
+        name = f"{src}.bpf{n if n else ''}.o"
+        open(name, "wb").write(blob)
+        print(f"[+] {name}: off=0x{off:x} size={len(blob)} "
+              f"sha256={hashlib.sha256(blob).hexdigest()}")</code></pre>
+
+        <p>Output on the sample — a clean, unstripped eBPF object you can drop straight into
+        <code>readelf</code>, <code>llvm-objdump -d</code> or <code>bpftool</code>:</p>
+
+<pre><code>[+] sample.bpf.o: off=0x324f9 size=52776 sha256=3607de25…0f7b01
+sample.bpf.o: ELF 64-bit LSB relocatable, eBPF, version 1 (SYSV),
+              with debug_info, not stripped</code></pre>
+
+        <h2>Does it work on other samples?</h2>
+        <p>Yes, for the common case — and that case is wide. Anything that loads its program
+        through <code>bpf_object__open_mem</code> must keep an uncompressed BPF ELF in the
+        image, and that includes the dominant build styles:</p>
+        <ul>
+            <li><strong>libbpf skeletons</strong> (<code>bpftool gen skeleton</code>) embed
+            the raw <code>.o</code> as a byte array — carves cleanly.</li>
+            <li><strong>libbpf-rs</strong> / Rust loaders (like this sample) and most C
+            agents built on libbpf — same story.</li>
+            <li><strong>Multiple programs</strong> in one binary — the scan loops and dumps
+            each one.</li>
+        </ul>
+        <p>Where it stops:</p>
+        <ul>
+            <li><strong>Compressed or encrypted payloads.</strong> If the blob is XOR'd,
+            deflated, zstd'd, etc., there is no <code>EM_BPF</code> magic to find. You then
+            have to locate the unpacking routine and either replay it statically or let an
+            emulator run just that function — never the whole binary.</li>
+            <li><strong>Aya / pure-Rust loaders</strong> that build the program a different
+            way, or loaders that assemble the object on the fly, won't always present a
+            single contiguous ELF.</li>
+            <li><strong>Trailing-data edge cases.</strong> The size heuristic assumes the
+            section header table is the last structure (true for clang BPF objects). Vendor
+            tooling that appends data could shift it; ELF readers tolerate trailing bytes, so
+            erring long is harmless.</li>
+        </ul>
+
+        <h2>What the carved program turned out to be</h2>
+        <p>The recovered object kept its BTF and debug strings, so its intent reads straight
+        off the section and map names: an <strong>eBPF hiding rootkit</strong>. It pins maps
+        named <code>hidden_pids</code>, <code>hidden_names</code> and
+        <code>hidden_inodes</code>, then attaches tracepoints that rewrite what user space is
+        allowed to see — <code>getdents64</code> to hide files and processes,
+        <code>openat</code>/<code>read</code> to scrub <code>/proc/net</code> entries,
+        <code>recvmsg</code> to filter netlink so hidden sockets vanish from
+        <code>ss</code>, <code>ptrace</code> for anti-debug, and
+        <code>sched_process_exec</code> to keep the cloak across <code>exec</code>. None of
+        that required running it.</p>
+
+        <p>Because the object kept its symbols, the relocations alone reconstruct the whole
+        design: every tracepoint entry point, the maps it reads and writes, and the one
+        surviving bpf-to-bpf call (<code>walk_dirent → name_to_pid</code> — everything else is
+        inlined). The graph below is built purely from that static relocation data, no
+        execution:</p>
+
+        <figure style="margin:18px 0;">
+            <img src="callgraph.svg" alt="Static call and data graph of deps.bpf.o: tracepoint hooks on the left, out-of-line helper functions in the middle, BPF maps on the right; dashed edges are map accesses, the solid edge is a bpf-to-bpf call."
+                 style="width:100%;height:auto;border:1px solid var(--border);border-radius:8px;background:#0e1116;">
+            <figcaption class="small dim">Call/data graph of <code>deps.bpf.o</code> —
+            gold = tracepoint hooks, teal = out-of-line helpers, green cylinders = BPF maps.
+            Dashed edges are map reads/writes; the solid edge is the lone bpf-to-bpf call.
+            Reconstructed from relocations with a ~150-line parser, nothing executed.</figcaption>
+        </figure>
+
+        <h2>Developer artifacts: the name the author gave it</h2>
+        <p>The carved eBPF object was compiled <strong>with debug info and never stripped</strong>,
+        so its DWARF line table still carries the absolute path of the original source on the
+        author's build machine:</p>
+
+<pre><code>/cloud/scales/agent/../ebpf/scales.bpf.c
+        → /cloud/scales/agent/ebpf/scales.bpf.c</code></pre>
+
+        <p>That single path leaks more than a filename. The project root is
+        <code>/cloud/scales/</code>, split into <code>agent/</code> (the user-space Rust
+        loader — the binary distributed as <code>deps</code>) and <code>ebpf/</code> (the
+        kernel-side program, <code>scales.bpf.c</code>). In other words, the internal
+        codename the developer gave this tool is <strong>"scales"</strong> — not a vendor
+        label or a campaign nickname, but the author's own working name, left behind because
+        the BPF object was shipped unstripped while the Rust binary's own <code>.rs</code>
+        paths were remapped away. The kernel half betrayed the project; the user-space half
+        did not.</p>
+
+        <p class="small dim">At the time of writing the source <em>filename</em>
+        <code>scales.bpf.c</code> had been noted once in passing by the press, but the full
+        build tree (<code>/cloud/scales/agent</code>) and the reading of <em>scales</em> as the
+        project's internal codename do not appear in the public technical analyses I could
+        find — caveat that I only checked the main sources.</p>
+
+        <h2>Following the loader with mwemu</h2>
+        <p>The carver above is enough when the object is in the clear. To <em>find</em> it in
+        the first place — and to handle samples where it is not in the clear — I walked the
+        loader under <a href="https://github.com/sha0coder/mwemu">mwemu</a>, a CPU emulator
+        that runs the binary's instructions in software and never lets a single one touch the
+        real machine. For a stealer that installs kernel-side eBPF hooks, that distinction is
+        the whole point: you get to step through the program without giving it a kernel.</p>
+        <p>The whole session was driven from an AI agent over two
+        <a href="https://modelcontextprotocol.io/">MCP</a> servers: a
+        <strong>mwemu MCP</strong> exposing the emulator (open a session, load the binary,
+        disassemble, read registers and memory, search the address space) and a
+        <strong>radare2 MCP</strong> for static analysis (it resolved the cross-reference
+        from the GOT slot of <code>bpf_object__open_mem</code> back to its single call site).
+        Together they let the loader be inspected conversationally without ever executing it.</p>
+        <p>mwemu loaded the PIE with a realistic Linux image — relocated to its base, sections
+        mapped, a simulated <code>libc</code> and stack in place — and disassembled the
+        startup chain (<code>_start</code> → <code>__libc_start_main</code> →
+        <code>main</code>) on demand. From there the useful moves were all read-only:</p>
+        <ul>
+            <li>disassemble the call site and read its operands, which is where the
+            <code>lea rdi, [&hellip;]</code> / <code>mov esi, 0xce28</code> pair handed up the
+            buffer pointer and size of the embedded object;</li>
+            <li>read that address straight out of <em>emulated</em> memory and see the
+            <code>EM_BPF</code> ELF header sitting there;</li>
+            <li>search the emulated address space for magics and markers — all without the
+            process ever running.</li>
+        </ul>
+        <p>For this sample the object was uncompressed, so the carve closed it out. But the
+        same emulated approach is exactly how you defeat a <em>packed</em> one: let mwemu
+        execute only the decompression routine, in software, then dump the now-plaintext ELF
+        from emulated memory — still without detonating the malware. Reading bytes, not
+        running them, end to end.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li><a href="https://www.sonatype.com/blog/atomic-arch-npm-campaign-adds-malicious-dependency">Sonatype — Atomic Arch (Sonatype-2026-003775)</a></li>
+            <li><a href="https://thehackernews.com/2026/06/over-400-arch-linux-aur-packages.html">The Hacker News — 400+ AUR packages hijacked to deploy infostealer and eBPF rootkit</a></li>
+            <li><a href="https://www.bleepingcomputer.com/news/security/over-400-arch-linux-packages-compromised-to-push-rootkit-infostealer/">BleepingComputer — Over 400 Arch Linux packages compromised</a></li>
+            <li><a href="https://hackread.com/atomic-arch-hijacks-linux-aur-packages-malware/">HackRead — Atomic Arch (passing mention of <code>scales.bpf.c</code>)</a></li>
+            <li><a href="https://ioctl.fail/preliminary-analysis-of-aur-malware/">ioctl.fail — preliminary technical analysis of the AUR malware</a></li>
+            <li><a href="https://github.com/sha0coder/mwemu">mwemu — the emulator used to walk the loader (driven via its MCP server)</a></li>
+            <li><a href="https://github.com/radareorg/radare2">radare2 — static analysis / xref resolution (via its MCP server)</a></li>
+            <li><a href="https://modelcontextprotocol.io/">Model Context Protocol — how both tools were driven from the agent</a></li>
+        </ul>
+        <p class="small dim">Static ELF inspection plus mwemu to follow the loader without
+        executing it, and the carver above. The sample itself is not published.</p>
+
+        <h2 id="iocs">Indicators of compromise (IOCs)</h2>
+        <p class="small dim">Hashes, paths and behavioral markers verified directly from the
+        sample, except where noted as <em>per public reporting</em>. The targeted-service
+        domains are endpoints the stealer reads credentials for, not attacker infrastructure.</p>
+
+        <h3>Files &amp; hashes</h3>
+        <table>
+            <tr><th>Artifact</th><th>Value</th></tr>
+            <tr><td>Loader (payload ELF) <code>deps</code> — SHA-256</td><td class="mono small">6144d433f8a0316869877b5f834c801251bbb936e5f1577c5680878c7443c98b</td></tr>
+            <tr><td><code>deps</code> GNU BuildID</td><td class="mono small">41980d03dc3c4809591db0ff17003a82bc067d97</td></tr>
+            <tr><td>Embedded eBPF object <code>scales.bpf.o</code> — SHA-256</td><td class="mono small">3607de2597f8955f9a88f36ee43b64d3891b8ef536e99fa098e80169350f7b01</td></tr>
+            <tr><td>eBPF object location in <code>deps</code></td><td class="mono small">.rodata, file offset 0x324f9, length 0xce28 (52776 bytes)</td></tr>
+        </table>
+
+        <h3>Host filesystem (rootkit)</h3>
+        <ul class="small">
+            <li>Pinned BPF maps: <code>/sys/fs/bpf/hidden_pids</code>,
+            <code>/sys/fs/bpf/hidden_names</code>, <code>/sys/fs/bpf/hidden_inodes</code></li>
+            <li>BPF map names: <code>hidden_pids</code>, <code>hidden_names</code>,
+            <code>hidden_inodes</code>, <code>diag_fds</code>, <code>net_fds</code>,
+            <code>net_open_temp</code>, <code>net_read_temp</code>, <code>recvmsg_temp</code>,
+            <code>scratch</code>, <code>sock_open_temp</code></li>
+        </ul>
+
+        <h3>eBPF behavior (attached tracepoints)</h3>
+        <ul class="small">
+            <li><code>tp/syscalls/sys_{enter,exit}_getdents64</code> — hide files/processes</li>
+            <li><code>tp/syscalls/sys_{enter,exit}_openat</code>, <code>sys_{enter,exit}_read</code>,
+            <code>sys_enter_close</code> — scrub <code>/proc/net</code></li>
+            <li><code>tp/syscalls/sys_{enter,exit}_recvmsg</code> — netlink filtering</li>
+            <li><code>tp/syscalls/sys_{enter,exit}_socket</code> — track socket fds</li>
+            <li><code>tp/syscalls/sys_enter_ptrace</code> — anti-debug</li>
+            <li><code>tp/sched/sched_process_exec</code> — persist cloak across exec</li>
+        </ul>
+
+        <h3>Developer / build artifacts</h3>
+        <ul class="small">
+            <li>Build path (from unstripped DWARF): <code>/cloud/scales/agent/../ebpf/scales.bpf.c</code></li>
+            <li>Project root <code>/cloud/scales/</code>; loader dir <code>agent/</code>;
+            eBPF source <code>scales.bpf.c</code>; internal codename <strong>scales</strong></li>
+        </ul>
+
+        <h3>Network — exfiltration &amp; C2</h3>
+        <ul class="small">
+            <li>Exfil over HTTP upload to <code>temp.sh</code></li>
+            <li>C2 via a Tor onion service through a local loopback proxy <span class="dim">(per public reporting)</span></li>
+            <li>TLS client uses Encrypted Client Hello (ECH) to hide the SNI</li>
+        </ul>
+
+        <h3>Stealer detection (targeted endpoints, paths &amp; queries)</h3>
+        <ul class="small">
+            <li>Queried services: <code>teams.microsoft.com</code> (<code>skypeToken</code>),
+            <code>*.slack.com</code> (<code>xoxc-</code> tokens), <code>discord.com</code>,
+            <code>api.github.com</code>, <code>registry.npmjs.org</code> (<code>_authToken</code>)</li>
+            <li>Cookie-theft SQL:
+                <code>SELECT encrypted_value FROM cookies WHERE host_key LIKE '%teams.microsoft.com' ORDER BY last_access_utc DESC LIMIT 30</code>;
+                <code>SELECT encrypted_value FROM cookies WHERE name = 'd' AND host_key LIKE '%.slack.com' ORDER BY last_access_utc DESC LIMIT 1</code></li>
+            <li>Filesystem reads: <code>~/.ssh</code>, <code>/etc/passwd</code>,
+            <code>/proc/self/loginuid</code>, <code>~/.config/discord</code>,
+            <code>~/.config/discordcanary</code>, <code>~/.config/Slack</code>,
+            <code>~/.config/Microsoft/</code>, browser cookie/Local Storage LevelDB stores,
+            <code>monero-wallet-gui</code></li>
+        </ul>
+
+        <h3>Campaign / distribution <span class="small dim">(per public reporting)</span></h3>
+        <ul class="small">
+            <li>Campaign: <strong>Atomic Arch</strong> — Sonatype-2026-003775</li>
+            <li>Threat actor handle: <code>arojas</code>; 408 hijacked AUR packages</li>
+            <li>npm dropper: <code>atomic-lockfile@1.4.2</code>, payload at <code>src/hooks/deps</code></li>
+        </ul>
+
+    </div>
+</main>
+
+<footer id="contact">
+    <div class="wrap">
+        <div class="social">
+            <a href="https://github.com/sha0coder">github</a>
+            <a href="https://x.com/sha0coder">x/twitter</a>
+            <a href="https://infosec.exchange/@sha0coder">mastodon</a>
+            <a href="https://www.linkedin.com/in/jesusolmos/">linkedin</a>
+        </div>
+        <div>© Jesús Olmos · <a href="../">home</a></div>
+    </div>
+</footer>
+
+</body>
+</html>

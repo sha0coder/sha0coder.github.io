@@ -1,169 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="sha0coder - Security Research, Reverse Engineering, Malware Analysis">
-    <title>sha0coder@github:~$</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="description" content="sha0coder — security research and emulation: reverse engineering tooling, malware emulation, shellcode and LLM benchmarking.">
+    <title>sha0coder — Security Research &amp; Emulation</title>
+    <link rel="stylesheet" href="assets/style.css">
 </head>
-
 <body>
-    <div class="terminal">
-        <div class="terminal-header">
-            <span class="user">sha0coder@github</span><span class="separator">:</span><span class="path">~</span><span
-                class="prompt">$</span>
-        </div>
 
-        <div class="terminal-body">
-            <!-- Setup Section -->
-            <section class="section">
-                <div class="section-header">
-                    <span class="prompt">[</span><span class="highlight">setup</span><span class="prompt">]</span>
-                </div>
-                <div class="section-content">
-                    <p class="description">My Linux Debian setup with awesome-wm neovim etc.</p>
-                    <div class="link-item">
-                        <span class="bullet"></span>
-                        <a href="https://github.com/sha0coder/setup/tree/main/linux" target="_blank"
-                            rel="noopener">github.com/sha0coder/setup/tree/main/linux</a>
-                    </div>
-                </div>
-            </section>
+<nav>
+    <div class="wrap">
+        <a class="logo" href="/">sha0<span>coder</span></a>
+        <ul>
+            <li><a href="#projects">Projects</a></li>
+            <li><a href="#writeups">Writeups</a></li>
+            <li><span class="dim" title="coming soon">LLM Benchmark</span></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
 
-            <!-- Projects Section -->
-            <section class="section">
-                <div class="section-header">
-                    <span class="prompt">[</span><span class="highlight">projects</span><span class="prompt">]</span>
-                </div>
-                <div class="section-content">
-                    <div class="project">
-                        <div class="project-name">
-                            <span class="bullet"></span>
-                            <a href="https://github.com/sha0coder/mwemu" target="_blank" rel="noopener">MWEMU
-                                Project</a>
-                        </div>
-                        <div class="project-name">
-                            <span class="bullet"></span>
-                            <a href="https://mwemu.github.io/" target="_blank" rel="noopener">MWEMU doumentation</a>
-                        </div>
-                        <p class="project-desc">Reverse Engineering - Windows malware emulator for automated analysis</p>
-                    </div>
+<header class="hero">
+    <div class="wrap">
+        <div class="kicker">sha0coder</div>
+        <h1>Security Research &amp; Emulation</h1>
+        <p class="dim">Tooling and research on reverse engineering, malware emulation and
+        shellcode — plus an ongoing chapter on benchmarking LLMs.</p>
+    </div>
+</header>
 
-                    <div class="project">
-                        <div class="project-name">
-                            <span class="bullet"></span>
-                            <a href="https://github.com/sha0coder/pynasm" target="_blank" rel="noopener">PyNasm</a>
-                        </div>
-                        <p class="project-desc">Shellcodes - transpiler to convert python to asm</p>
-                    </div>
+<main>
+    <div class="wrap">
 
-                    <div class="project">
-                        <div class="project-name">
-                            <span class="bullet"></span>
-                            <a href="https://github.com/sha0coder/noise-hunter" target="_blank" rel="noopener">Noise
-                                Hunter</a>
-                        </div>
-                        <p class="project-desc">Pressure Waves - I'm learning about this topic, Noise Hunter helps to study ambient sounds.</p>
-                    </div>
-                </div>
-            </section>
+        <h2 id="projects">Projects</h2>
 
-            <!-- Resources Section -->
-            <section class="section">
-                <div class="section-header">
-                    <span class="prompt">[</span><span class="highlight">resources</span><span class="prompt">]</span>
-                </div>
-
-                <div class="section-content">
-                    <div class="resource">
-                        <!--
-                        <div class="resource-name">
-                            <span class="bullet"></span>
-                            <a href="writeups/noise-defense-en.html">Wave Hacking - Creating a Noise Shield</a>
-                        </div>
-                        -->
-                        <p class="resource-desc">Im preparing interesting topics for this section like denoising, pratical philosophy, evolutive systems.</p>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- Social Network Section -->
-            <section class="section">
-                <div class="section-header">
-                    <span class="prompt">[</span><span class="highlight">social network</span><span class="prompt">]</span>
-                </div>
-                <div class="section-content">
-                    <div class="resource">
-                        <div class="resource-name">
-                            <span class="bullet"></span>
-                            <a href="https://github.com/sha0coder">https://github.com/sha0coder</a>
-                        </div>
-                        <p class="resource-desc">github</p>
-                    </div>
-                </div>
-
-                <div class="section-content">
-                    <div class="resource">
-                        <div class="resource-name">
-                            <span class="bullet"></span>
-                            <a href="https://x.com/sha0coder">https://x.com/sha0coder</a>
-                        </div>
-                        <p class="resource-desc">twitter / x.com</p>
-                    </div>
-                </div>
-
-                <div class="section-content">
-                    <div class="resource">
-                        <div class="resource-name">
-                            <span class="bullet"></span>
-                            <a href="https://infosec.exchange/@sha0coder">https://infosec.exchange/@sha0coder</a>
-                        </div>
-                        <p class="resource-desc">mastodon - infosec.exchange</p>
-                    </div>
-                </div>
-
-                <div class="section-content">
-                    <div class="resource">
-                        <div class="resource-name">
-                            <span class="bullet"></span>
-                            <a href="https://www.youtube.com/@JesusOlmos-wm8ch/videos">https://www.youtube.com/@JesusOlmos-wm8ch/videos</a>
-                        </div>
-                        <p class="resource-desc">youtube channel</p>
-                    </div>
-                </div>
-
-                <div class="section-content">
-                    <div class="resource">
-                        <div class="resource-name">
-                            <span class="bullet"></span>
-                            <a href="https://www.linkedin.com/in/jesusolmos/">https://www.linkedin.com/in/jesusolmos/</a>
-                        </div>
-                        <p class="resource-desc">linkedin</p>
-                    </div>
-                </div>
-
-                <div class="section-content">
-                    <div class="resource">
-                        <div class="resource-name">
-                            <span class="bullet"></span>
-                            <a href="https://suno.com/playlist/d122dc01-86e8-4001-a6e9-8a426ea8c45d">https://suno.com/playlist/d122dc01-86e8-4001-a6e9-8a426ea8c45d</a>
-                        </div>
-                        <p class="resource-desc">cyber music</p>
-                    </div>
-                </div>
-
-            </section>
-
-            <!-- Footer -->
-            <div class="footer">
-                <span class="user">sha0coder@github</span><span class="separator">:</span><span
-                    class="path">~</span><span class="prompt">$ █</span>
+        <div class="card">
+            <h3><a href="https://github.com/sha0coder/mwemu">MWEMU</a></h3>
+            <p>Windows malware emulator for automated analysis. Emulates x86/x64 user-mode
+            binaries and shellcode without executing them on a real system, designed for
+            fast, scriptable reverse engineering.</p>
+            <div class="links">
+                <a href="https://github.com/sha0coder/mwemu">source</a>
+                <a href="https://mwemu.github.io/">documentation</a>
             </div>
         </div>
-    </div>
-</body>
 
+        <div class="card">
+            <h3><a href="https://github.com/sha0coder/pynasm">PyNasm</a></h3>
+            <p>A transpiler that converts Python into assembly — a practical tool for
+            writing and studying shellcode.</p>
+            <div class="links">
+                <a href="https://github.com/sha0coder/pynasm">source</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>llmbench</h3>
+            <p>A benchmark harness for language models: a cognitive battery covering logic,
+            calculus, WISC-V / WAIS-IV-inspired subtests, number theory, philosophy and
+            creativity, scored 0–100. Works against local models (Ollama) and frontier
+            APIs with a fixed LLM judge for the open-ended items.</p>
+            <div class="links">
+                <span class="dim">results &amp; methodology — coming soon</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><a href="https://github.com/sha0coder/noise-hunter">Noise Hunter</a></h3>
+            <p>A side project on pressure waves: tooling to study and characterize
+            ambient sound.</p>
+            <div class="links">
+                <a href="https://github.com/sha0coder/noise-hunter">source</a>
+            </div>
+        </div>
+
+        <h2 id="writeups">Writeups</h2>
+
+        <div class="card">
+            <h3><a href="scales/">Scales — carving an embedded eBPF rootkit</a></h3>
+            <p><strong>Scales</strong>: an eBPF-based infostealer &amp; rootkit targeting Arch
+            Linux. Statically pulling the kernel-side eBPF program (<code>scales.bpf.c</code>)
+            out of the <code>deps</code> loader (Atomic Arch AUR campaign) — no execution, no
+            kernel, no root — driven with the mwemu and radare2 MCP servers. With IOCs.</p>
+            <div class="links">
+                <a href="scales/">read</a>
+            </div>
+        </div>
+
+        <h2>Research</h2>
+        <p><strong>LLM Benchmark</strong> <span class="dim small">(coming soon)</span> — an ongoing chapter evaluating language
+        models with a reproducible, mostly-deterministic test battery. Methodology, per-model
+        reports and a comparative ranking.</p>
+        <p class="dim small">More topics in preparation: denoising, practical philosophy,
+        evolutive systems.</p>
+
+        <h2>Setup</h2>
+        <p class="small">My Linux (Debian) environment — awesome-wm, neovim and friends:
+        <a href="https://github.com/sha0coder/setup/tree/main/linux">sha0coder/setup</a>.</p>
+
+    </div>
+</main>
+
+<footer id="contact">
+    <div class="wrap">
+        <div class="social">
+            <a href="https://github.com/sha0coder">github</a>
+            <a href="https://x.com/sha0coder">x/twitter</a>
+            <a href="https://infosec.exchange/@sha0coder">mastodon</a>
+            <a href="https://www.linkedin.com/in/jesusolmos/">linkedin</a>
+            <a href="https://www.youtube.com/@JesusOlmos-wm8ch/videos">youtube</a>
+            <a href="https://suno.com/playlist/d122dc01-86e8-4001-a6e9-8a426ea8c45d">cyber music</a>
+        </div>
+        <div>© Jesús Olmos · <a href="old/index.html">previous version of this site</a></div>
+    </div>
+</footer>
+
+</body>
 </html>
