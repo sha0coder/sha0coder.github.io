@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEISMO · M3+ Earthquake Terminal</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{
+    --bg:#0b0e11; --panel:#131722; --panel2:#1c2230; --grid:#1f2733;
+    --txt:#d1d4dc; --muted:#7b8499; --green:#26a69a; --red:#ef5350;
+    --amber:#ffb74d; --crit:#ff1744; --border:#2a2f3a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+  header{display:flex;align-items:center;gap:16px;padding:10px 16px;flex-wrap:wrap;
+    background:var(--panel);border-bottom:1px solid var(--border)}
+  header h1{font-size:15px;margin:0;letter-spacing:2px;color:#fff}
+  header h1 span{color:var(--green)}
+  .stat{color:var(--muted)}.stat b{color:var(--txt)}
+  #status{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  .dot.busy{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  .dot.err{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
+  @keyframes pulse{50%{opacity:.3}}
+  button{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
+    border-radius:4px;padding:4px 10px;font-family:inherit;cursor:pointer}
+  button:hover{border-color:var(--green);color:#fff}
+
+  #banner{display:none;padding:6px 16px;background:#3a2e15;color:var(--amber);
+    border-bottom:1px solid var(--border);font-size:12px}
+
+  #ticker{background:#000;border-bottom:1px solid var(--border);overflow:hidden;
+    white-space:nowrap;padding:6px 0}
+  #ticker .track{display:inline-block;animation:scroll 60s linear infinite;padding-left:100%}
+  #ticker:hover .track{animation-play-state:paused}
+  @keyframes scroll{to{transform:translateX(-100%)}}
+  .tk{margin:0 22px}
+  .tk b{color:#fff}.tk .up{color:var(--green)}.tk .mid{color:var(--amber)}
+  .tk .hi{color:var(--red)}.tk .crit{color:var(--crit)}
+
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:1px;background:var(--border);
+    height:calc(100vh - 96px)}
+  #chartWrap{background:var(--panel);position:relative}
+  #chart{position:absolute;inset:0}
+  #legend{position:absolute;top:10px;left:14px;z-index:5;color:var(--muted);font-size:11px}
+  #legend b{color:var(--txt)}
+
+  aside{background:var(--panel);overflow-y:auto}
+  .feed-head{padding:8px 14px;color:var(--muted);border-bottom:1px solid var(--border);
+    position:sticky;top:0;background:var(--panel);font-size:11px;letter-spacing:1px;
+    display:flex;justify-content:space-between}
+  .row{padding:8px 14px;border-bottom:1px solid var(--grid);transition:background .15s}
+  .row:hover{background:var(--panel2)}
+  .row.new{animation:flash 1.5s}
+  @keyframes flash{from{background:#1a3a35}to{background:transparent}}
+  .row .top{display:flex;justify-content:space-between;align-items:baseline}
+  .mag{font-weight:bold;font-size:16px}
+  .place{color:var(--txt);font-size:12px;margin-top:2px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .meta{color:var(--muted);font-size:11px;margin-top:3px;display:flex;gap:12px}
+  .badge{font-size:10px;padding:1px 5px;border-radius:3px;color:#000;font-weight:bold}
+  footer{padding:6px 16px;background:var(--panel);border-top:1px solid var(--border);
+    color:var(--muted);font-size:11px;display:flex;gap:18px;flex-wrap:wrap}
+  select{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
+    border-radius:4px;padding:3px 6px;font-family:inherit}
+  #tooltip{position:absolute;z-index:10;display:none;pointer-events:none;
+    background:rgba(13,17,23,.96);border:1px solid var(--border);border-left-width:3px;
+    border-radius:5px;padding:8px 10px;font-size:11px;max-width:240px;
+    box-shadow:0 4px 16px rgba(0,0,0,.5)}
+  #tooltip .t-mag{font-size:15px;font-weight:bold}
+  #tooltip .t-place{color:var(--txt);margin:3px 0}
+  #tooltip .t-meta{color:var(--muted)}
+  #tooltip .t-cta{color:var(--green);margin-top:5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SEISMO<span>°</span> TERMINAL</h1>
+  <span class="stat">EVENTS&nbsp;<b id="count">—</b></span>
+  <span class="stat">MAX MAG&nbsp;<b id="maxmag">—</b></span>
+  <label class="stat">INTERVAL
+    <select id="window">
+      <option value="day">Daily</option>
+      <option value="week" selected>Weekly</option>
+      <option value="month">Monthly</option>
+      <option value="year">Yearly</option>
+    </select>
+  </label>
+  <label class="stat">MAG ≥
+    <select id="minmag">
+      <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option>
+    </select>
+  </label>
+  <label class="stat" style="display:flex;align-items:center;gap:5px">
+    <input type="checkbox" id="ma" checked> MOVING AVERAGES
+  </label>
+  <button id="refresh">↻ Refresh</button>
+  <div id="status"><span class="dot" id="dot"></span><span id="statustxt">connecting…</span></div>
+</header>
+
+<div id="banner"></div>
+<div id="ticker"><div class="track" id="track"></div></div>
+
+<div class="grid">
+  <div id="chartWrap">
+    <div id="legend">
+      <b>Magnitude</b> over time · markers = largest ·
+      <span style="color:var(--green)">green &lt;4</span>
+      <span style="color:var(--amber)">amber 4-5</span>
+      <span style="color:var(--red)">red 5-6</span>
+      <span style="color:var(--crit)">critical 6+</span> ·
+      <span style="color:#ffeb3b">MA10</span> <span style="color:#42a5f5">MA30</span>
+    </div>
+    <div id="chart"></div>
+    <div id="tooltip"></div>
+  </div>
+  <aside>
+    <div class="feed-head"><span>LIVE FEED</span><span id="feedinfo"></span></div>
+    <div id="feed"></div>
+  </aside>
+</div>
+
+<footer>
+  <span>Source: <b>USGS Earthquake Hazards Program · FDSN</b> (global catalog)</span>
+  <span id="refreshinfo"></span>
+  <span id="updated"></span>
+</footer>
+
+<script>
+const FDSN  = 'https://earthquake.usgs.gov/fdsnws/event/1/query';
+const COUNT = 'https://earthquake.usgs.gov/fdsnws/event/1/count';
+const MAX   = 20000; // límite duro del USGS por consulta
+
+// ---- Color por magnitud (escala "trading") ----
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const magColor = m => m>=6?css('--crit'):m>=5?css('--red'):m>=4?css('--amber'):css('--green');
+const magClass = m => m>=6?'crit':m>=5?'hi':m>=4?'mid':'up';
+
+// ---- Gráfico ----
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout:{background:{color:css('--panel')}, textColor:css('--muted')},
+  grid:{vertLines:{color:css('--grid')}, horzLines:{color:css('--grid')}},
+  rightPriceScale:{borderColor:css('--border')},
+  timeScale:{borderColor:css('--border'), timeVisible:true, secondsVisible:false},
+  crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
+});
+const series = chart.addBaselineSeries({
+  baseValue:{type:'price', price:4},
+  topLineColor:css('--red'), topFillColor1:'rgba(239,83,80,.25)', topFillColor2:'rgba(239,83,80,.02)',
+  bottomLineColor:css('--green'), bottomFillColor1:'rgba(38,166,154,.05)', bottomFillColor2:'rgba(38,166,154,.25)',
+  lineWidth:2, priceFormat:{type:'price', precision:1, minMove:0.1},
+});
+// Medias móviles (estilo trading): rápida (10) y lenta (30) sobre la magnitud
+const maOpts = c => ({color:c, lineWidth:1, priceLineVisible:false,
+  crosshairMarkerVisible:false, lastValueVisible:false});
+const ma10 = chart.addLineSeries(maOpts('#ffeb3b'));
+const ma30 = chart.addLineSeries(maOpts('#42a5f5'));
+function sma(points, n){
+  const out=[]; let sum=0;
+  for(let i=0;i<points.length;i++){
+    sum += points[i].value;
+    if(i>=n) sum -= points[i-n].value;
+    if(i>=n-1) out.push({time:points[i].time, value:+(sum/n).toFixed(2)});
+  }
+  return out;
+}
+window.addEventListener('resize', ()=>chart.timeScale().fitContent());
+
+// ---- Estado ----
+let known = new Set();
+let firstLoadEver = true;
+let timer = null;
+let byTime = new Map(); // time(sec) -> quake, for tooltip/click
+
+// ---- Hover tooltip + click to Google Maps ----
+const tip = document.getElementById('tooltip');
+const wrap = document.getElementById('chartWrap');
+chart.subscribeCrosshairMove(p=>{
+  const q = (p.time!=null) ? byTime.get(p.time) : null;
+  if(!q || !p.point || p.point.x<0 || p.point.y<0){ tip.style.display='none'; return; }
+  tip.style.display='block';
+  tip.style.borderLeftColor = magColor(q.mag);
+  tip.innerHTML =
+    `<div class="t-mag" style="color:${magColor(q.mag)}">M${q.mag.toFixed(1)} · ${label(q.mag)}</div>`+
+    `<div class="t-place">${q.place}</div>`+
+    `<div class="t-meta">${new Date(q.time).toLocaleString('en-US',{hour12:false})}`+
+    ` · depth ${q.depth?.toFixed(0)} km · ${q.lat.toFixed(2)}, ${q.lon.toFixed(2)}</div>`+
+    `<div class="t-cta">▸ click to open in Google Maps</div>`;
+  const w = wrap.clientWidth, x = p.point.x;
+  // place the tooltip beside the cursor without overflowing the panel
+  tip.style.left = (x > w-260 ? x-250 : x+16) + 'px';
+  tip.style.top  = Math.max(8, p.point.y - 10) + 'px';
+});
+chart.subscribeClick(p=>{
+  const q = (p.time!=null) ? byTime.get(p.time) : null;
+  if(q) window.open(`https://www.google.com/maps/search/?api=1&query=${q.lat},${q.lon}`,'_blank');
+});
+
+// ISO starttime for the interval
+function startTimeFor(interval){
+  const d = new Date();
+  ({day:()=>d.setDate(d.getDate()-1),
+    week:()=>d.setDate(d.getDate()-7),
+    month:()=>d.setMonth(d.getMonth()-1),
+    year:()=>d.setFullYear(d.getFullYear()-1)}[interval])();
+  return d.toISOString();
+}
+function params(interval, minMag){
+  const p = new URLSearchParams({format:'geojson', minmagnitude:minMag,
+    orderby:'time', limit:MAX});
+  const st = startTimeFor(interval);
+  if(st) p.set('starttime', st);
+  return p;
+}
+function setDot(cls, txt){
+  document.getElementById('dot').className = 'dot' + (cls?' '+cls:'');
+  document.getElementById('statustxt').textContent = txt;
+}
+
+async function load(){
+  const interval = document.getElementById('window').value;
+  const minMag = parseFloat(document.getElementById('minmag').value);
+  const banner = document.getElementById('banner');
+  try{
+    setDot('busy','querying USGS…');
+    const p = params(interval, minMag);
+
+    // 1) How many events match? (to warn if over the cap)
+    const cp = new URLSearchParams(p); cp.delete('limit'); cp.delete('orderby'); cp.set('format','text');
+    let total = null;
+    try{ total = parseInt(await (await fetch(COUNT+'?'+cp,{cache:'no-store'})).text(),10); }catch(_){}
+
+    if(total!=null && total>MAX){
+      banner.style.display='block';
+      banner.textContent = `⚠ ${total.toLocaleString('en-US')} events match. `+
+        `USGS caps queries at ${MAX.toLocaleString('en-US')}: showing the most recent ones. `+
+        `Raise the minimum magnitude or shorten the interval to see the full set.`;
+    } else banner.style.display='none';
+
+    // 2) Datos
+    const res = await fetch(FDSN+'?'+p, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+
+    const quakes = data.features
+      .filter(f => f.properties.mag != null)
+      .map(f => ({
+        id:f.id,
+        mag:+f.properties.mag.toFixed(1),
+        place:f.properties.place || 'Unknown location',
+        time:f.properties.time,
+        depth:f.geometry.coordinates[2],
+        lon:f.geometry.coordinates[0],
+        lat:f.geometry.coordinates[1],
+        url:f.properties.url,
+      }))
+      .sort((a,b)=>a.time-b.time);
+
+    render(quakes, total);
+    setDot('', timer ? 'live' : 'loaded');
+    document.getElementById('updated').textContent =
+      'Last update: ' + new Date().toLocaleTimeString('en-US');
+  }catch(e){
+    setDot('err','error: ' + e.message);
+    console.error(e);
+  }
+}
+
+function render(quakes, total){
+  // --- Serie (evita timestamps duplicados que rechaza la librería) ---
+  const seen = new Set(); const points = [];
+  byTime = new Map();
+  for(const q of quakes){
+    let t = Math.floor(q.time/1000);
+    while(seen.has(t)) t++;
+    seen.add(t);
+    points.push({time:t, value:q.mag});
+    byTime.set(t, q);
+  }
+  series.setData(points);
+
+  // Medias móviles
+  const showMA = document.getElementById('ma').checked;
+  ma10.setData(showMA ? sma(points,10) : []);
+  ma30.setData(showMA ? sma(points,30) : []);
+
+  // Markers: only the largest (max 150) to avoid clutter on history views
+  const thr = quakes.length>500 ? 6 : 5;
+  const big = quakes.filter(q=>q.mag>=thr)
+    .sort((a,b)=>b.mag-a.mag).slice(0,150)
+    .sort((a,b)=>a.time-b.time);
+  series.setMarkers(big.map(q=>({
+    time:Math.floor(q.time/1000), position:'aboveBar',
+    color:magColor(q.mag), shape:'circle', text:'M'+q.mag
+  })));
+  if(firstLoadEver) chart.timeScale().fitContent();
+
+  // --- Cabecera ---
+  document.getElementById('count').textContent =
+    quakes.length.toLocaleString('en-US') + (total>quakes.length ? ' / '+total.toLocaleString('en-US') : '');
+  const maxQ = quakes.reduce((a,b)=>b.mag>a.mag?b:a,{mag:0});
+  document.getElementById('maxmag').textContent = quakes.length? 'M'+maxQ.mag.toFixed(1) : '—';
+
+  const newest = [...quakes].reverse();
+
+  // --- Ticker ---
+  const tk = newest.slice(0,40).map(q=>
+    `<span class="tk"><b>${shortPlace(q.place)}</b> `+
+    `<span class="${magClass(q.mag)}">M${q.mag.toFixed(1)} ▲</span> `+
+    `<span style="color:var(--muted)">${q.depth?.toFixed(0)}km</span></span>`).join('');
+  document.getElementById('track').innerHTML = tk + tk;
+
+  // --- Feed (max 300 rows so the DOM stays responsive on history views) ---
+  const CAP = 300;
+  const feed = document.getElementById('feed');
+  feed.innerHTML = '';
+  newest.slice(0,CAP).forEach(q=>{
+    const isNew = !firstLoadEver && !known.has(q.id);
+    const div = document.createElement('div');
+    div.className = 'row' + (isNew?' new':'');
+    div.innerHTML =
+      `<div class="top">
+         <span class="mag" style="color:${magColor(q.mag)}">M${q.mag.toFixed(1)}</span>
+         <span class="badge" style="background:${magColor(q.mag)}">${label(q.mag)}</span>
+       </div>
+       <div class="place">${q.place}</div>
+       <div class="meta">
+         <span>${new Date(q.time).toLocaleString('en-US',{hour12:false})}</span>
+         <span>depth ${q.depth?.toFixed(0)} km</span>
+       </div>`;
+    if(q.url){ div.style.cursor='pointer'; div.onclick=()=>window.open(q.url,'_blank'); }
+    feed.appendChild(div);
+  });
+  document.getElementById('feedinfo').textContent =
+    newest.length>CAP ? `showing ${CAP} of ${newest.length}` : `${newest.length} events`;
+
+  known = new Set(quakes.map(q=>q.id));
+  firstLoadEver = false;
+}
+
+function shortPlace(p){ const i=p.indexOf(' of '); return (i>=0?p.slice(i+4):p).slice(0,18); }
+function label(m){ return m>=7?'MAJOR':m>=6?'STRONG':m>=5?'MODERATE':m>=4?'LIGHT':'MINOR'; }
+
+// Auto-refresh ONLY on short intervals (true real-time); history views load on demand
+function setupRefresh(){
+  if(timer){ clearInterval(timer); timer=null; }
+  const interval = document.getElementById('window').value;
+  const info = document.getElementById('refreshinfo');
+  if(interval==='day' || interval==='week'){
+    timer = setInterval(load, 60000);
+    info.textContent = 'Auto-refresh: 60s';
+  }else{
+    info.textContent = 'No auto-refresh (use ↻)';
+  }
+}
+
+['window','minmag'].forEach(id=>
+  document.getElementById(id).addEventListener('change', ()=>{firstLoadEver=true; setupRefresh(); load();}));
+document.getElementById('refresh').addEventListener('click', load);
+document.getElementById('ma').addEventListener('change', load);
+
+setupRefresh();
+load();
+</script>
+</body>
+</html>
