@@ -87,6 +87,18 @@
         <h2 id="writeups">Writeups</h2>
 
         <div class="card">
+            <h3><a href="driver-emulation/">A kernel without a kernel — catching a driver use-after-free</a></h3>
+            <p>Loading a Linux <code>.ko</code> into <strong>mwemu</strong> — no real kernel,
+            no root — and driving its ioctls until a deliberate use-after-free turns into a
+            report. A synthetic linker for relocatable driver objects, an interceptable kernel
+            surface, and a slab that quarantines freed chunks so a stale pointer becomes a
+            finding instead of a crash. Worked end to end on a vulnerable telemetry driver.</p>
+            <div class="links">
+                <a href="driver-emulation/">read</a>
+            </div>
+        </div>
+
+        <div class="card">
             <h3><a href="scales/">Scales — carving an embedded eBPF rootkit</a></h3>
             <p><strong>Scales</strong>: an eBPF-based infostealer &amp; rootkit targeting Arch
             Linux. Statically pulling the kernel-side eBPF program (<code>scales.bpf.c</code>)

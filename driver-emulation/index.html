@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Loading a Linux .ko into mwemu — no real kernel, no root — to catch a use-after-free. A slab that quarantines freed chunks turns a stale pointer into a report instead of a crash.">
+    <title>A kernel without a kernel — catching a driver use-after-free — sha0coder</title>
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav>
+    <div class="wrap">
+        <a class="logo" href="../">sha0<span>coder</span></a>
+        <ul>
+            <li><a href="../#projects">Projects</a></li>
+            <li><a href="../#writeups">Writeups</a></li>
+            <li><a href="../#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <div class="kicker">Writeup · mwemu kernel-mode</div>
+        <h1>A kernel without a kernel — catching a driver use-after-free</h1>
+        <p class="dim" style="font-size:19px;line-height:1.4;margin-bottom:6px;">
+        Loading a Linux <code>.ko</code> into <strong>mwemu</strong> and driving its ioctls
+        until a deliberate use-after-free turns into a report — no real kernel, no root, no
+        crashed machine.</p>
+        <p class="small dim"><time datetime="2026-08-31">Published 2026-08-31</time></p>
+        <p class="dim">mwemu began as a user-mode emulator. This is the kernel-mode chapter:
+        link a driver object, resolve its imports to a synthetic kernel we control, and model
+        the slab allocator so a lifetime bug — the dominant species of kernel vulnerability —
+        surfaces as a finding instead of a panic.</p>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+
+        <h2>A driver is not a program with different imports</h2>
+        <p>A <code>.ko</code> is an <code>ET_REL</code> relocatable object: no entry point, no
+        loader, no process — just sections that the OS places into its own address space,
+        relocates, and calls back into. So mwemu supplies the three missing pieces, and
+        nothing else:</p>
+        <ul>
+            <li><strong>A linker</strong> — places the sections and applies every relocation
+            at load time.</li>
+            <li><strong>A kernel to call</strong> — each imported symbol
+            (<code>kmalloc</code>, <code>mutex_lock</code>, <code>printk</code>&hellip;)
+            resolves to a slot that, when called, is intercepted and routed to a Rust
+            implementation. Same trick as the user-mode API layer, pointed at a kernel
+            surface.</li>
+            <li><strong>An allocator with a memory</strong> — the reason this exists.</li>
+        </ul>
+
+        <h2>The idea: a slab that refuses to forget</h2>
+        <p>Driver bugs are lifetime bugs, and they hide because a real slab is helpful: it
+        hands a freed chunk straight back out, so a stale pointer keeps working right up until
+        it reads someone else's data. mwemu inverts that. A freed chunk is not recycled — it
+        goes to <strong>quarantine</strong>: it stays mapped, poisoned with SLUB's
+        <code>0x6b6b6b6b&hellip;</code>, and every access is checked against a ledger that
+        remembers who allocated it, where, and where it was freed. Chunks are separated by an
+        unmapped redzone, so an overflow faults instead of corrupting the neighbour. Keeping
+        the chunk mapped is what turns an invisible bug into a report — and lets execution
+        continue past the first stale access, so one run surfaces the whole chain.</p>
+
+        <h2>The test target: a hidden UAF</h2>
+        <p><code>tlm</code> is a deliberately vulnerable character driver, written the way a
+        real one is: refcounted objects in their own <code>kmem_cache</code>, a
+        mutex-protected list, per-object op vectors, an ioctl surface. The bug is
+        <em>not</em> "free it, then read it two lines later". It keeps a one-entry
+        <strong>hot-channel cache</strong> to skip the list walk on repeated writes:</p>
+
+<pre><code>/*
+ * One-entry hot-channel cache. It holds no reference on purpose, so the
+ * rule is that whoever removes a channel from the list also clears it.
+ */
+struct tlm_channel  *fast;
+u32                  fast_id;</code></pre>
+
+        <p>That invariant is honoured on close and on unload — but the author missed the third
+        way a channel dies: <code>TLM_IOC_DESTROY</code> frees the object while the file handle
+        stays open. The cache is left dangling, and the next write takes the hot path straight
+        through it, skipping even the <code>magic</code> check — all the way to an indirect
+        call:</p>
+
+<pre><code>if (dev->fast && dev->fast_id == req->id)
+        ch = dev->fast;                       /* freed object */
+...
+ret = ch->ops->encode(ch, kbuf, req->len);    /* indirect call through it */</code></pre>
+
+        <p>Trigger: create a channel, write once (populates the cache), destroy it, write
+        again.</p>
+
+        <h2>Running it</h2>
+        <p><code>make driver</code> builds it into <code>test/linux_uaf_driver.ko</code>; the
+        tests skip themselves if it is absent.</p>
+
+<pre><code>make driver
+cargo test -p libmwemu tests::kernel -- --nocapture</code></pre>
+
+        <p>Four tests: the module links with no unresolved imports, a legitimate write stays
+        silent, a double-free is caught, and the stale-cache write is reported. That last one:</p>
+
+<pre><code>BUG: KMWEMU: use-after-free (read) in tlm_channel of size 8 at addr 0xffff888000001128
+  object 0xffff888000001100..0xffff888000001160 (requested 88 bytes, bucket 96), offset 40
+  allocated by kmem_cache_alloc_noprof at 0xffffffffc000056c (step 86)
+  freed by kmem_cache_free at 0xffffffffc00004e9 (step 407)
+
+BUG: KMWEMU: use-after-free (poisoned pointer dereference) at addr 0x6b6b6b6b6b6b6b73</code></pre>
+
+        <p>Read together, those two lines <em>are</em> the bug. The first is the load of
+        <code>ch->ops</code> (offset 40) out of the quarantined object, naming its cache and
+        both the alloc and free sites. The second is the dereference of the pointer that load
+        produced — <code>0x6b6b&hellip;</code> is free poison, so its provenance is proof, not
+        a guess.</p>
+
+        <h2>What it catches</h2>
+        <table>
+            <tr><th>Finding</th><th>How it is decided</th></tr>
+            <tr><td>use-after-free (read / write)</td><td>access lands in a quarantined chunk</td></tr>
+            <tr><td>poisoned-pointer deref</td><td>the address itself is free poison — the pointer came out of a freed object</td></tr>
+            <tr><td>use-after-free call</td><td>an indirect branch target came out of quarantine</td></tr>
+            <tr><td>double-free / invalid free</td><td>free of a quarantined chunk, or of something that is not a chunk base</td></tr>
+            <tr><td>slab out-of-bounds</td><td>access past the requested size, inside the bucket</td></tr>
+            <tr><td>memory leak</td><td>still live after the module's exit path ran</td></tr>
+        </table>
+        <p>The memory helpers (<code>memcpy</code>, <code>copy_from_user</code>&hellip;) run
+        through the guard too — a <code>memcpy()</code> into a freed object is a UAF no
+        instruction-level check would see, because the copy runs in the kernel's code, not the
+        driver's. Refcounts and deferred work are modelled for real
+        (<code>call_rcu</code>/timers are queued, not run inline) precisely because that is
+        where the "free later" half of most UAFs lives.</p>
+
+        <h2>Driving it</h2>
+        <p>Reaching the ioctl handler needs argument structs in guest memory, so it is driven
+        programmatically — from Rust, from the CLI (<code>mwemu -f driver.ko -6 -v</code> links
+        the module and runs its init like <code>insmod</code>), or over an
+        <a href="https://modelcontextprotocol.io/">MCP</a> server so an agent can link a
+        driver and drive its ioctls conversationally:</p>
+
+<pre><code>let mut emu = libmwemu::emu64();
+emu.load_kernel_module("driver.ko")?;             // link + relocate
+emu.run_module_init()?;                            // insmod
+emu.call_module_symbol("drv_ioctl", &amp;[0, cmd, argp])?;
+for f in emu.kernel_findings() { println!("{}", f.report()); }</code></pre>
+
+        <h2>Why it generalizes</h2>
+        <p>Only the symbol tables and handlers differ between operating systems — placement,
+        interception, the ledger and the analysis are shared. Windows and macOS already have
+        their surfaces and pool/zone allocators implemented; what is missing is only the
+        loader (a <code>.sys</code> is a PE with a <code>DriverEntry</code>, a kext a Mach-O
+        bundle). The day either loader lands it inherits the whole use-after-free analysis for
+        free, because the part that finds the bug never cared which OS the driver was for.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li><a href="https://github.com/sha0coder/mwemu">mwemu — the emulator (kernel-mode lives in <code>libmwemu::kernel</code>)</a></li>
+            <li><a href="https://modelcontextprotocol.io/">Model Context Protocol — how it is driven from an agent</a></li>
+        </ul>
+        <p class="small dim">Reproduced against the <code>tlm</code> reference driver. It is
+        deliberately vulnerable and only ever linked and executed inside the emulator, never
+        inserted into a real kernel.</p>
+
+    </div>
+</main>
+
+<footer id="contact">
+    <div class="wrap">
+        <div class="social">
+            <a href="https://github.com/sha0coder">github</a>
+            <a href="https://x.com/sha0coder">x/twitter</a>
+            <a href="https://infosec.exchange/@sha0coder">mastodon</a>
+            <a href="https://www.linkedin.com/in/jesusolmos/">linkedin</a>
+        </div>
+        <div>© Jesús Olmos · <a href="../">home</a></div>
+    </div>
+</footer>
+
+</body>
+</html>
