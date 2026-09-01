@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Driving the real in-tree rtl8723bs Wi-Fi driver inside mwemu — no hardware, no root — surfaces an unbounded WPS attribute copy a beacon can reach during a normal scan. Reported upstream with a fix.">
+    <title>A beacon, a scan, and one byte of stack — sha0coder</title>
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav>
+    <div class="wrap">
+        <a class="logo" href="../">sha0<span>coder</span></a>
+        <ul>
+            <li><a href="../#projects">Projects</a></li>
+            <li><a href="../#writeups">Writeups</a></li>
+            <li><a href="../#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <div class="kicker">Writeup · mwemu kernel-mode</div>
+        <h1>A beacon, a scan, and one byte of stack</h1>
+        <p class="dim" style="font-size:19px;line-height:1.4;margin-bottom:6px;">
+        The <a href="../driver-emulation/">previous chapter</a> drove a <em>deliberately</em> vulnerable driver
+        inside <strong>mwemu</strong>. This one points the same rig at a real, unmodified in-tree
+        driver — and a WPS attribute that lies about its length turns a nearby Wi-Fi frame
+        into a write past a one-byte stack variable.</p>
+        <p class="small dim"><time datetime="2026-09-01">Published 2026-09-01</time></p>
+        <p class="dim">Nothing here is a knock on the kernel. Wi-Fi drivers parse hostile
+        bytes from the air on the hot path, at enormous volume, and the people who maintain
+        them do careful, thankless work. The point is smaller and friendlier: emulation is a
+        cheap way to <em>surface</em> this class of bug early, so a human with the hardware can
+        confirm it.</p>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+
+        <figure style="margin:0 0 26px;">
+            <img src="pic/mwemu_ai_and_me.png" alt="Cyberpunk illustration: the author and an AI robot ride a neon motorcycle labelled MWEMU down a highway made of binary code, past road signs reading EMULATE > EXECUTE > EXPLORE."
+                 style="width:100%;height:auto;border:1px solid var(--border);border-radius:8px;">
+            <figcaption class="small dim">Human, AI and mwemu on the same bike — tooling
+            surfaces the candidate; a person still has to ride it the rest of the way, onto real
+            hardware.</figcaption>
+        </figure>
+
+        <h2>From a toy driver to a real one</h2>
+        <p>The <a href="../driver-emulation/">last writeup</a> linked a <code>.ko</code> into
+        mwemu, resolved its imports to a synthetic kernel, and modelled the slab so a lifetime
+        bug surfaced as a report instead of a panic. The natural next question: does the same
+        rig say anything useful about code that ships to real machines? So I loaded
+        <code>drivers/staging/rtl8723bs</code> — the driver for a common RTL8723BS SDIO Wi-Fi
+        part — exactly as the tree ships it, and drove one function that parses received
+        frames.</p>
+
+        <h2>An attribute that lies about its length</h2>
+        <p>A WPS information element is a list of attributes, each
+        <code>[id:2][data_len:2][data&hellip;]</code>. <code>rtw_get_wps_attr_content()</code>
+        finds one and copies its data into the caller's buffer — using the length straight from
+        the frame, with nothing said about how big the destination is:</p>
+
+<pre><code>memcpy(buf_content, attr_ptr + 4, attr_len - 4);   /* no bound on the destination */</code></pre>
+
+        <p>The <em>Selected Registrar</em> attribute is one byte by spec, so callers hand it a
+        one-byte destination. And this runs on the ordinary scan path — for every network seen,
+        <code>rtw_cfg80211_inform_bss()</code> reads the WPS IE out of a received
+        beacon / probe-response into a single stack byte:</p>
+
+<pre><code>u8 sr = 0;                                          /* one byte on the stack */
+...
+rtw_get_wps_attr_content(wpsie, wpsielen,
+                         WPS_ATTR_SELECTED_REGISTRAR, &amp;sr, NULL);</code></pre>
+
+        <p>A frame whose Selected Registrar attribute declares a length larger than one byte
+        makes the copy run long, over the stack. The IEs come verbatim from the received frame,
+        so the length is attacker-controlled — and a scan happens on its own under
+        NetworkManager/iwd. No pairing, no association, just being in radio range while the
+        machine looks around.</p>
+
+        <h2>What mwemu saw</h2>
+        <p>Driven with a crafted WPS IE (a Selected Registrar attribute of declared length 100)
+        into a one-byte tracked chunk, the ledger flags the copy exactly where it leaves the
+        object:</p>
+
+<pre><code>BUG: KMWEMU: slab-out-of-bounds in u8 sr of size 100 at addr 0xffff888000000001
+  object 0xffff888000000000..0xffff888000000008 (requested 1 bytes, bucket 8), offset 1</code></pre>
+
+        <p>Same idea as the toy driver: the destination stays mapped and guarded, so the write
+        past it becomes a line of text instead of an invisible corruption. On a normal kernel
+        the corrupted stack canary lands you, at minimum, in a <code>__stack_chk_fail</code>
+        panic — a remote, unauthenticated denial of service for a machine with this chip that
+        happens to be scanning nearby.</p>
+
+        <h2>What emulation can and can't tell you</h2>
+        <p>This is the honest part, and it is the whole reason the workflow is healthy.
+        Emulation drove the parser in isolation and proved the mechanism; the reachability
+        chain — received frame &rarr; scan queue &rarr; the one-byte destination — was read
+        from the source. What I did <em>not</em> do is run the whole path end to end on a real
+        RTL8723BS. That last step matters: analysis and LLM-assisted review are good at
+        producing plausible memory-safety candidates, and a healthy fraction of plausible
+        candidates are wrong. Confirming them on the actual hardware is what separates a real
+        fix from noise, and asking for that confirmation is good stewardship, not
+        gatekeeping — <code>drivers/staging/</code> is explicitly low-assurance
+        (<code>TAINT_CRAP</code>) and treated accordingly.</p>
+        <p>So this is written as what it is: a strong, tool-surfaced candidate with a one-line
+        fix, reported upstream, waiting on someone with the part to close the loop on metal.</p>
+
+        <h2>The fix, and the wider pattern</h2>
+        <p>The fix is small — reject an attribute that claims more data than the IE holds, hand
+        the function the destination size, and clamp the copy to it (and compute the length in
+        a wider type so it can't wrap). Worth a broader look: this
+        <code>rtw_get_wps_attr*</code> code is vendor code duplicated across the wider Realtek
+        family, so the same shape is worth checking wherever it was copied — several out-of-tree
+        forks carry it, and at least one already clamps.</p>
+
+        <p>The takeaway isn't alarm. It's that over-the-air parsers are reachable by design, the
+        bugs in them are ordinary and fixable, and a driver emulator is a cheap early net — one
+        that hands a finding to a human, who still has to prove it on hardware.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li><a href="https://github.com/sha0coder/mwemu">mwemu — the emulator (kernel-mode lives in <code>libmwemu::kernel</code>)</a></li>
+            <li><a href="../driver-emulation/">A kernel without a kernel — the toy-driver chapter</a></li>
+            <li><a href="https://lore.kernel.org/all/20260901072249.366750-1-sha0@badchecksum.net/">The patch and its review on lore (linux-staging)</a></li>
+        </ul>
+        <p class="small dim">Reported to the kernel security list and the staging maintainers;
+        a fix was posted publicly. Found by source review plus function-level emulation under
+        mwemu, assisted by an AI, and reviewed and signed off by a human. Not yet confirmed on
+        real hardware.</p>
+
+    </div>
+</main>
+
+<footer id="contact">
+    <div class="wrap">
+        <div class="social">
+            <a href="https://github.com/sha0coder">github</a>
+            <a href="https://x.com/sha0coder">x/twitter</a>
+            <a href="https://infosec.exchange/@sha0coder">mastodon</a>
+            <a href="https://www.linkedin.com/in/jesusolmos/">linkedin</a>
+        </div>
+        <div>© Jesús Olmos · <a href="../">home</a></div>
+    </div>
+</footer>
+
+</body>
+</html>
