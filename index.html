@@ -46,6 +46,18 @@
         </div>
 
         <div class="card">
+            <h3><a href="https://github.com/mwemuorg/kohunt">kohunt</a></h3>
+            <p>Drives real Linux <code>.ko</code> drivers inside mwemu's kernel mode and pulls
+            use-after-free, double-free and slab-out-of-bounds findings out of a poisoned,
+            quarantining slab. Found a <a href="rtl8723bs-wps/">real one</a> in-tree.</p>
+<pre><code>kohunt probe your-driver.ko   # capture the real .probe + fault-inject its allocs
+kohunt init  /lib/modules/$(uname -r)/kernel   # sweep every module on the box</code></pre>
+            <div class="links">
+                <a href="https://github.com/mwemuorg/kohunt">source</a>
+            </div>
+        </div>
+
+        <div class="card">
             <h3><a href="https://github.com/sha0coder/pynasm">PyNasm</a></h3>
             <p>A transpiler that converts Python into assembly — a practical tool for
             writing and studying shellcode.</p>
