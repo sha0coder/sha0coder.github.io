@@ -130,25 +130,48 @@ unhandled exception... type = DWordDereferencing — stopping emulation</code></
 
         <h2>Third proof: a process stuck reliving the same second</h2>
         <p>To get a clean answer with none of Telegram's noise, I wrote the smallest possible
-        real workload: a C loop that writes a counter to a file, reads it back, prints it, sleeps
-        two seconds, repeats. Single thread, no GPU, real file I/O. Captured and resumed exactly
-        like the others — <code>22</code> regions in, only the same three unreadable kernel pages
+        real workload: single-threaded, no GPU, no sockets — just a counter written to a file,
+        read back, printed, and a two-second sleep, forever:</p>
+<pre><code>int main(void) {
+    const char *path = "/tmp/dummy_counter.txt";
+    long counter = 0;
+
+    for (;;) {
+        char buf[64];
+        int n = snprintf(buf, sizeof(buf), "counter=%ld pid=%d\n", counter, getpid());
+
+        int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd &gt;= 0) { write(fd, buf, n); fsync(fd); close(fd); }
+
+        fd = open(path, O_RDONLY);                    // read it back too
+        if (fd &gt;= 0) {
+            char readback[64] = {0};
+            read(fd, readback, sizeof(readback) - 1);
+            close(fd);
+            printf("wrote and read back: %s", readback);
+        }
+
+        counter++;
+        sleep(2);
+    }
+}</code></pre>
+        <p>Launched, then cloned mid-flight from a completely unrelated shell — a real
+        <code>ptrace(PTRACE_ATTACH)</code> on someone else's PID, not a spawned child, so Yama's
+        default <code>ptrace_scope=1</code> demands root:</p>
+<pre><code>sudo mwemu-snapshot attach $(pgrep -x dummy) -o /tmp/dummy_snapshot.mwemu</code></pre>
+        <p>Then handed straight to the CLI to resume:</p>
+<pre><code>mwemu -f dummy -d /tmp/dummy_snapshot.mwemu -v</code></pre>
+        <p><code>22</code> regions captured, only the same three unreadable kernel pages
         skipped, no crash. And it kept running, syscall after real syscall, exactly as
         written:</p>
-<pre><code>** openat('/tmp/dummy_counter.txt') =3
-** write(fd:3 ...)
-** fsync()
-** close(fd:3) =0
-** openat('/tmp/dummy_counter.txt') =3
-** read(fd:3 ...) =24
-** close(fd:3) =0
-wrote and read back: counter=101 pid=1707123
-** clock_nanosleep()
-** openat('/tmp/dummy_counter.txt') =3
-...
-wrote and read back: counter=101 pid=1707123
-...
-wrote and read back: counter=101 pid=1707123</code></pre>
+
+        <figure style="margin:0 0 26px;">
+            <img src="pic/dummy_replay.png" alt="Terminal showing mwemu replaying the cloned process's real open/write/fsync/close/read/close syscall sequence in red, and its own printf output in white — three separate loop iterations each printing the identical line 'wrote and read back: counter=101 pid=1707123', instruction counts in the tens of millions climbing between them while the counter never changes, until the trace is interrupted with Ctrl-C."
+                 style="width:100%;height:auto;border:1px solid var(--border);border-radius:8px;">
+            <figcaption class="small dim">Three full loop iterations, tens of millions of
+            instructions apart, each ending on the exact same line.</figcaption>
+        </figure>
+
         <p>Thirty million instructions in, and the counter never moved past 101 — the exact
         value it held at the instant of capture. The loop is real: it opens, writes, fsyncs,
         closes, reopens, reads, prints, sleeps — every syscall fires, in order, forever. What
