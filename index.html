@@ -87,7 +87,7 @@ kohunt init  /lib/modules/$(uname -r)/kernel   # sweep every module on the box</
         <h2 id="writeups">Writeups</h2>
 
         <div class="card">
-            <h3><a href="mwemu-snapshot/">The clone that couldn't count</a></h3>
+            <h3><a href="mwemu-snapshot/">mwemu clone running processes</a></h3>
             <p>Ptrace-attaching a live Linux process, copying its registers and memory, and
             handing mwemu a real <code>Emu</code> at the exact point it was frozen — no gdb, no
             minidump. It resumes and replays real syscalls faithfully against a plain
