@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Ptrace-attaching a live Linux process, copying its registers and memory, and handing mwemu a real Emu at the exact point it was frozen — no gdb, no minidump. It resumes and replays real syscalls faithfully, until GPU memory and a stopped clock reveal exactly where the trick ends.">
+    <title>The clone that couldn't count — sha0coder</title>
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav>
+    <div class="wrap">
+        <a class="logo" href="../">sha0<span>coder</span></a>
+        <ul>
+            <li><a href="../#projects">Projects</a></li>
+            <li><a href="../#writeups">Writeups</a></li>
+            <li><a href="../#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <div class="kicker">Writeup · mwemu userland</div>
+        <h1>The clone that couldn't count</h1>
+        <p class="dim" style="font-size:19px;line-height:1.4;margin-bottom:6px;">
+        The <a href="../driver-emulation/">first chapter</a> emulated a kernel driver. The
+        <a href="../rtl8723bs-wps/">second</a> found a real bug in one. This one asks a different
+        question: can you reach into a Linux process that's already <em>running</em>, take a
+        snapshot of it, and keep it going inside <strong>mwemu</strong> — no gdb, no minidump, no
+        cooperation from the process at all?</p>
+        <p class="small dim"><time datetime="2026-09-11">Published 2026-09-11</time></p>
+        <p class="dim">Mostly yes. It replays real syscalls faithfully, in the right order, with
+        the right arguments, for as long as you let it run — right up until it tries to touch
+        something a live snapshot fundamentally can't carry: the GPU, or the clock.</p>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+
+        <h2>What "cloning a process" actually means</h2>
+        <p>Every static loader mwemu already had — ELF, PE, Mach-O, <code>.ko</code> — starts
+        from a file on disk and does the linker's job itself: place sections, apply relocations,
+        build an <code>argv</code>/<code>auxv</code>, hand control to an entry point. A
+        <em>live</em> process has already paid that cost. <code>ld.so</code> already ran, every
+        shared library already sits at its final address, every relocation is already patched
+        in. So cloning a running process is a different, in some ways easier problem: don't
+        build any of that — just copy what's already there, byte for byte, register for
+        register, and resume from the exact instruction it was on.</p>
+
+        <h2>ptrace, not gdb</h2>
+        <p>The mechanism is deliberately small and lives entirely outside mwemu's core, in a
+        standalone tool (<code>mwemu-snapshot</code>) so the "unsafe, talks to the kernel
+        directly" code never touches the emulator itself:</p>
+        <ul>
+            <li><code>PTRACE_ATTACH</code> + <code>PTRACE_GETREGS</code> — every general-purpose
+            register, including <code>fs_base</code>/<code>gs_base</code> (the real TLS base on
+            Linux, not a Windows-style segment selector — mwemu already treats it that way on
+            the Linux code path).</li>
+            <li><code>/proc/&lt;pid&gt;/maps</code>, parsed by hand — the format hasn't changed
+            in decades, and a 20-line parser turned out more robust than a general-purpose crate
+            (see below).</li>
+            <li><code>process_vm_readv</code> to bulk-copy every readable region in one syscall
+            per mapping, instead of <code>PTRACE_PEEKDATA</code> a word at a time.</li>
+        </ul>
+        <p>That triple — registers, memory, done — builds a real <code>SerializableEmu</code>
+        directly, the same internal type mwemu's Windows minidump loader already produces. No
+        new file format, no round-trip: <code>.into()</code> turns it into a live
+        <code>Emu</code> on the spot.</p>
+
+        <h2>Why not minidump</h2>
+        <p>The obvious first design was: ptrace via
+        <a href="https://github.com/rust-minidump/minidump-writer"><code>minidump-writer</code></a>,
+        producing a real <code>.dmp</code>, read by the <code>MinidumpReader</code> mwemu already
+        had for Windows crash dumps. It's a dead end as shipped — its
+        <code>MemoryInfoList</code> section parses <code>/proc/pid/maps</code> with a crate that
+        chokes on this kernel, and that failure is hard-coded fatal to the *entire* dump, even
+        though it's metadata mwemu's own reader doesn't strictly need. Forking a dependency to
+        route around a section nobody reads wasn't worth it — talking to
+        <code>/proc/pid/maps</code> and <code>ptrace</code> directly, with
+        <a href="https://docs.rs/nix"><code>nix</code></a>, sidesteps the whole file format.</p>
+
+        <h2>First proof: <code>sleep 300</code>, and a clock with no wristwatch</h2>
+        <p>Spawning a plain <code>sleep 300</code>, snapshotting it mid-startup, and resuming the
+        snapshot under mwemu replayed the real <code>ld.so</code>/glibc boot sequence faithfully
+        — real <code>mmap</code>s of the real <code>libc.so.6</code>, real
+        <code>arch_prctl(ARCH_SET_FS)</code>, real <code>getrandom</code> — all the way into
+        <code>sleep</code>'s own <code>main()</code>. Which then printed a real, honest error:</p>
+<pre><code>sleep: invalid time interval '300'
+Try 'sleep --help' for more information.</code></pre>
+        <p>Not a bug in <code>sleep</code> — a gap in the clone. Only general-purpose registers
+        get captured (<code>PTRACE_GETREGS</code>), not FPU/SSE/AVX state. GNU <code>sleep</code>
+        parses fractional seconds with <code>xstrtod</code>, which uses SSE — and an emulator
+        that starts with a zeroed FPU instead of the process's real one gets that comparison
+        wrong. A clean, fully-explained failure is exactly what a healthy tool should produce.</p>
+
+        <h2>Second proof, and the real wall: a live Telegram Desktop</h2>
+        <p>The obvious next target: something with actual weight. <code>mwemu-snapshot</code>
+        against a real, running Telegram Desktop — over a thousand mapped regions, 60 threads —
+        attached, copied, and resumed the same way. It replayed real dynamic-linker startup all
+        over again, until it hit this:</p>
+<pre><code>/!\ error dereferencing dword on 0x7f4a4b74c000
+unhandled exception... type = DWordDereferencing — stopping emulation</code></pre>
+        <p>That address is <code>[vvar]</code> — a page the kernel injects into every process to
+        serve <code>clock_gettime()</code> without a real syscall. It, and a hundred-plus
+        <code>anon_inode:i915.gem</code> regions alongside it (GPU buffer objects — Telegram
+        decodes a lot of video: stickers, GIFs, calls), share the same root problem:
+        <code>process_vm_readv</code> can't read them at all. They aren't ordinary memory; they
+        have no backing page in the normal sense, only a kernel fault handler that fills them
+        in on the fly.</p>
+        <p>The tempting fix — since <code>[vvar]</code>'s <em>content</em> is identical for every
+        process on the same kernel, just substitute our own copy at the target's captured
+        address — turned out to be a genuine dead end, and an instructive one. Reading it via
+        <code>/proc/self/mem</code> fails for exactly the same underlying reason
+        (<code>get_user_pages</code> can't follow this kind of mapping, ours or anyone else's).
+        A raw pointer load bypasses that — and crashed the tool outright with <strong>SIGBUS</strong>,
+        despite <code>/proc/pid/maps</code> reporting the page as perfectly readable
+        (<code>r--p</code>). The permission bit lied, or rather, described something a plain CPU
+        load doesn't honor for this class of page. Twice. On my own machine.</p>
+        <p>The fix was to stop trying. A live crash on the analyst's own box is a strictly worse
+        outcome than a page that's simply absent — mwemu already turns "absent" into a clean,
+        catchable, well-described stop, the same one <code>sleep</code> hit. GPU memory can't be
+        substituted this way at all regardless; it's live rendering state with no equivalent
+        anywhere else. If <code>[vvar]</code> support is worth having later, the right place for
+        it is the *replay* side, inside mwemu's own sandboxed context — synthesizing a page when
+        it recognizes the pattern — not a live read of dangerous kernel memory from the tool
+        doing the capturing.</p>
+
+        <h2>Third proof: a process stuck reliving the same second</h2>
+        <p>To get a clean answer with none of Telegram's noise, I wrote the smallest possible
+        real workload: a C loop that writes a counter to a file, reads it back, prints it, sleeps
+        two seconds, repeats. Single thread, no GPU, real file I/O. Captured and resumed exactly
+        like the others — <code>22</code> regions in, only the same three unreadable kernel pages
+        skipped, no crash. And it kept running, syscall after real syscall, exactly as
+        written:</p>
+<pre><code>** openat('/tmp/dummy_counter.txt') =3
+** write(fd:3 ...)
+** fsync()
+** close(fd:3) =0
+** openat('/tmp/dummy_counter.txt') =3
+** read(fd:3 ...) =24
+** close(fd:3) =0
+wrote and read back: counter=101 pid=1707123
+** clock_nanosleep()
+** openat('/tmp/dummy_counter.txt') =3
+...
+wrote and read back: counter=101 pid=1707123
+...
+wrote and read back: counter=101 pid=1707123</code></pre>
+        <p>Thirty million instructions in, and the counter never moved past 101 — the exact
+        value it held at the instant of capture. The loop is real: it opens, writes, fsyncs,
+        closes, reopens, reads, prints, sleeps — every syscall fires, in order, forever. What
+        doesn't happen is the one plain <code>counter++</code> between iterations. A process
+        cloned mid-flight keeps its body but not, it seems, its sense of time passing — it can
+        act out the same beat indefinitely without ever quite finishing the step that would move
+        it forward. Whether that's a scheduling/memory-commit quirk specific to how the loop
+        re-enters after a snapshot boundary, or something narrower, is open — logged as exactly
+        that: a real, reproducible, currently unexplained finding, not a guess dressed up as an
+        answer.</p>
+
+        <h2>What this is actually good for</h2>
+        <p>Not, it turns out, replacing a debugger. Cloning the <em>whole</em> live state of a
+        serious process — GPU-accelerated, many threads, real sockets — runs into walls that
+        aren't about this specific tool: GPU buffers, live kernel objects, and now a clock that
+        won't advance are all things a mid-flight snapshot fundamentally can't carry across.
+        Tools built to do this for real either record a process from birth, intercepting every
+        non-deterministic input as they go, or work a full layer down, snapshotting an entire
+        virtual machine. Reaching into an already-running native process and expecting to move
+        it wholesale into a different execution engine was always the ambitious version of the
+        idea.</p>
+        <p>The narrower version holds up well, and matches how the rest of this project's kernel
+        driver work has gone: a debugger is the right tool for finding <em>where</em> something
+        interesting happens live; mwemu is the right tool for repeatable, instrumented,
+        <em>safe</em> analysis of a narrow slice of it — one function, one buffer, one struct
+        pulled out at a breakpoint — fuzzed with a real memory-safety ledger watching, without
+        risking or even needing the process it came from to still be there.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li><a href="https://github.com/mwemuorg/mwemu">mwemu — the emulator</a></li>
+            <li><a href="../driver-emulation/">A kernel without a kernel — the toy-driver chapter</a></li>
+            <li><a href="../rtl8723bs-wps/">A beacon, a scan, and one byte of stack — the real-driver chapter</a></li>
+            <li><a href="https://docs.rs/nix">nix — the ptrace/process_vm_readv bindings used here</a></li>
+        </ul>
+        <p class="small dim">Every target here was either spawned for the purpose (the
+        <code>sleep</code> and counter-loop examples) or the author's own running process
+        (Telegram Desktop, on the author's own machine). Nothing here reads, stores, or shares
+        anything from a process that wasn't the author's own.</p>
+
+    </div>
+</main>
+
+<footer id="contact">
+    <div class="wrap">
+        <div class="social">
+            <a href="https://github.com/sha0coder">github</a>
+            <a href="https://x.com/sha0coder">x/twitter</a>
+            <a href="https://infosec.exchange/@sha0coder">mastodon</a>
+            <a href="https://www.linkedin.com/in/jesusolmos/">linkedin</a>
+        </div>
+        <div>© Jesús Olmos · <a href="../">home</a></div>
+    </div>
+</footer>
+
+</body>
+</html>

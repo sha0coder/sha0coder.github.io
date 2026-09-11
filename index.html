@@ -87,6 +87,19 @@ kohunt init  /lib/modules/$(uname -r)/kernel   # sweep every module on the box</
         <h2 id="writeups">Writeups</h2>
 
         <div class="card">
+            <h3><a href="mwemu-snapshot/">The clone that couldn't count</a></h3>
+            <p>Ptrace-attaching a live Linux process, copying its registers and memory, and
+            handing mwemu a real <code>Emu</code> at the exact point it was frozen — no gdb, no
+            minidump. It resumes and replays real syscalls faithfully against a plain
+            <code>sleep</code> and a live Telegram Desktop, until GPU memory, kernel-injected
+            pages, and a clock that refuses to advance reveal exactly where a mid-flight clone
+            stops being able to keep up.</p>
+            <div class="links">
+                <a href="mwemu-snapshot/">read</a>
+            </div>
+        </div>
+
+        <div class="card">
             <h3><a href="rtl8723bs-wps/">A beacon, a scan, and one byte of stack</a></h3>
             <p>Pointing the mwemu kernel-mode rig at a real, unmodified in-tree driver —
             <code>drivers/staging/rtl8723bs</code>. A WPS attribute that lies about its length
