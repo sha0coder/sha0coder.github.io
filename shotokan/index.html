@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kime</title>
+<style>
+  :root { --bg: #080c14; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+  canvas { display: block; width: min(100vw, calc(100vh * 16 / 9)); height: auto; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="js/config.js"></script>
+<script src="js/poses.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/moves.js"></script>
+<script src="js/fighter.js"></script>
+<script src="js/render.js"></script>
+<script src="js/kata.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
