@@ -2,9 +2,10 @@
 // Heian Yondan (simplified for side view) — attract-mode demo on the title screen
 Object.assign(P, {
   // Shotokan kokutsu-dachi: long and low, hips back over the deeply bent rear leg, front leg extended
+  // Heian Yondan opening: both open hands rise together to one side (haiwan-uke), close to each other
   kokutsuHaiwan: [
     -18,80, -14,116, -12,148, -12,164,
-    -2,146, 20,158, 34,176, -28,148, -42,164, -30,184,
+    -2,146, 12,162, 28,178, -28,148, -8,166, 18,186,
     -8,78, 20,44, 52,2, -26,78, -44,36, -42,2
   ],
   jujiUkeGedan: [

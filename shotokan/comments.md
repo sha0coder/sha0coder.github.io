@@ -1,0 +1,14 @@
+to fix:
+
+- [x] la patada del rival se ve por detras de mi personaje — el z-order de bloqueo solo pasa por delante del atacante si ese bloqueo realmente para la tecnica; un bloqueo equivocado ya no tapa la patada que sí conecta. Verificado con simulación (kick activo z=3 vs bloqueo equivocado z=1).
+- [x] a veces no se ve el anuncio (lo que va a hacer en ipon kumite el rival) es en amarillo y aveces salen 3 putnos — quitados los "..." de nivel 3 (siempre se anuncia la tecnica real); el anuncio ya no desaparece si el rival/jugador aún no está listo para empezar.
+- [x] falta el modo historia respetando la subida de cinturones que comente — implementado en js/dojo.js. Se entra como tercer modo del selector de la pantalla de título (↑ ↓, junto a IPON KUMITE y KUMITE libre), no con la tecla D: seiza -> briefing -> drill -> ceremonia, con los 7 cinturones y tareas exactas (blanco puños, amarillo patadas, naranja defensas por parejas, verde ganar ipon kumite, azul ganar kumite libre fácil, lila derribos+contraataques, marrón kumite duro + paos), progreso guardado en localStorage.
+- [x] cuando alguien acierta una mawasi yodan, dejala un rato para que se vea luego tira para atras la parte final de la pierna dolbando la rodilla y luego recoge la pierna, en 3 timempos. ademas la patada, como es con la pierna de atras es ha de ver por delante del cuerpo del rival. — mawashiGeri ahora tiene hold extendido, luego la rodilla se dobla hacia atrás, luego recoge la pierna (3 fases); y con el mismo fix del z-order, la pierna que patea queda siempre por delante del rival mientras el atacante sigue en estado "attack" (incluido el hold y la retirada).
+- [x] si he perdido el combate que no pase al siguiente nivel — revisado el código: `level` solo sube cuando `won` es true, tanto en el auto-timeout como al pulsar ENTER; verificado con una simulación de la lógica. Si aún lo ves puede ser caché del navegador — recarga forzada (Ctrl+Shift+R).
+- [x] si defiende bien el uchiuke actualmente contraataca con giaku o con ipon, pero tb la patada giratoria una de las 3 al azar. el giaku de contraataque es mas probable,y puede ir a chudan o yodan aleatoriamente. — uchi-uke ahora reparte 55% gyaku (chudan/yodan al azar) / 20% mawashi-geri / 25% derribo; verificado con 4000 tiradas simuladas.
+
+- [x] en ipon kumite si va para atras no retrocede, pone uchi uke. — si no hay nada que bloquear (el rival no está en 'attack'), ← ahora solo retrocede caminando; en cuanto el rival empieza de verdad la técnica, ← vuelve a bloquear como antes. En kumite libre se mantiene el bloqueo inmediato (ahí conviene guardia anticipada). Verificado con simulación (3 casos).
+- [x] en ipon kumite en cada nivel el rival ataca mas rapido, pasa menos tiempo desde que anuncia hasta que hace el ataque — tiempo entre el anuncio y el paso del rival: nivel 1 = 1.6s, nivel 2 = 1.1s, nivel 3 = 0.7s (antes 1.3s fijo en todos los niveles).
+
+
+

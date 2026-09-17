@@ -16,20 +16,22 @@ const MOVES = {
     hitbox: { x: 66, y: 164, w: 28, h: 28 },
     hitstun: 0.28,
   },
-  // gyaku-zuki that keeps advancing: the rear leg steps through and the same fist becomes a jun/oi-zuki
+  // gyaku-zuki that keeps advancing: a full step through (not a yori-ashi shuffle) crosses
+  // the rear leg past the front one, flipping the stance, and the same fist rises into an
+  // oi-zuki jodan — one committed technique, one hit, kiai on execution like the other jodan attacks
   gyakuOi: {
-    name: 'Gyaku-zuki → jun-zuki', level: 'chudan', points: 1, kind: 'punch', step: 150, back: 80, kiaiOnHit: true,
+    name: 'Gyaku-zuki → Oi-zuki jodan', level: 'jodan', points: 1, kind: 'punch',
+    step: 170, back: 90, stepStop: 58, kiai: true,
     phases: [
-      { pose: 'walk2', dur: 0.14, move: true },
-      { pose: 'gyakuZuki', dur: 0.08, move: true },
-      { pose: 'gyakuZuki', dur: 0.06, active: true },
-      { pose: 'walk1', dur: 0.12, move: true, rehit: true },
-      { pose: 'oiZuki', dur: 0.08, move: true },
-      { pose: 'oiZuki', dur: 0.06, active: true },
-      { pose: 'oiZuki', dur: 0.1 },
+      { pose: 'walk2', dur: 0.12, move: true },
+      { pose: 'gyakuZuki', dur: 0.12, move: true },
+      { pose: 'walk1', dur: 0.14, move: true },
+      { pose: 'oiZukiJodan', dur: 0.10, move: true },
+      { pose: 'oiZukiJodan', dur: 0.07, active: true },
+      { pose: 'oiZukiJodan', dur: 0.12 },
       { pose: 'walk2', dur: 0.3, retreat: true },
     ],
-    hitbox: { x: 58, y: 146, w: 30, h: 30 },
+    hitbox: { x: 64, y: 164, w: 30, h: 30 },
     hitstun: 0.32,
   },
   oiZuki: {
@@ -73,22 +75,54 @@ const MOVES = {
     phases: [
       { pose: 'walk1', dur: 0.16, move: true },
       { pose: 'maeChamber', dur: 0.16, move: true },
-      { pose: 'maeKick', dur: 0.07, active: true },
+      { pose: 'maeKick', dur: 0.09, active: true, blend: 34 },
       { pose: 'maeChamber', dur: 0.14 },
       { pose: 'idle', dur: 0.16 },
       { pose: 'walk2', dur: 0.3, retreat: true },
     ],
-    hitbox: { x: 60, y: 98, w: 34, h: 30 },
+    hitbox: { x: 62, y: 110, w: 34, h: 30 },
     hitstun: 0.35,
   },
-  mawashiGeri: {
-    name: 'Mawashi-geri jodan', level: 'jodan', points: 3, kind: 'kick', kiai: true, step: 100, back: 90,
+  // thrusting side kick with the front leg — a kick, so gedan-barai stops it like the others
+  yokoGeri: {
+    name: 'Yoko-geri chudan', level: 'kick', points: 2, kind: 'kick', step: 90, back: 90,
+    phases: [
+      { pose: 'walk1', dur: 0.16, move: true },
+      { pose: 'yokoChamber', dur: 0.17, move: true },
+      { pose: 'yokoKick', dur: 0.09, active: true, blend: 30 },
+      { pose: 'yokoChamber', dur: 0.14 },
+      { pose: 'idle', dur: 0.16 },
+      { pose: 'walk2', dur: 0.3, retreat: true },
+    ],
+    hitbox: { x: 68, y: 132, w: 32, h: 30 },
+    hitstun: 0.34,
+  },
+  // the same roundhouse aimed at the torso — this is what a player below green belt throws
+  mawashiGeriChudan: {
+    name: 'Mawashi-geri chudan', level: 'chudan', points: 2, kind: 'kick', step: 100, back: 90,
     phases: [
       { pose: 'walk1', dur: 0.16, move: true },
       { pose: 'mawashiChamber', dur: 0.2, move: true },
-      { pose: 'mawashiKick', dur: 0.08, active: true },
-      { pose: 'mawashiChamber', dur: 0.14 },
-      { pose: 'idle', dur: 0.16 },
+      { pose: 'mawashiKickChudan', dur: 0.06, active: true },
+      { pose: 'mawashiKickChudan', dur: 0.14 },
+      { pose: 'mawashiChamber', dur: 0.16 },
+      { pose: 'idle', dur: 0.18 },
+      { pose: 'walk2', dur: 0.3, retreat: true },
+    ],
+    hitbox: { x: 62, y: 124, w: 34, h: 32 },
+    hitstun: 0.4,
+  },
+  mawashiGeri: {
+    name: 'Mawashi-geri jodan', level: 'jodan', points: 3, kind: 'kick', kiai: true, step: 100, back: 90,
+    // in 3 beats: the extended leg holds a moment so the hit reads clearly, then the knee
+    // bends to pull the shin back, and only then does the whole leg lower back to the ground
+    phases: [
+      { pose: 'walk1', dur: 0.16, move: true },
+      { pose: 'mawashiChamber', dur: 0.2, move: true },
+      { pose: 'mawashiKick', dur: 0.06, active: true },
+      { pose: 'mawashiKick', dur: 0.16 },
+      { pose: 'mawashiChamber', dur: 0.16 },
+      { pose: 'idle', dur: 0.18 },
       { pose: 'walk2', dur: 0.3, retreat: true },
     ],
     hitbox: { x: 60, y: 158, w: 36, h: 34 },

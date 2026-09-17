@@ -69,8 +69,9 @@ function limb(ctx, a, b, w1, w2, fill, shade) {
   ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.lineJoin = 'round';
   limbPath(ctx, a, b, w1, w2); ctx.stroke();
 }
-function fist(ctx, p, f, r, open, far) {
-  ctx.fillStyle = far ? COLORS.skinShade : COLORS.skin; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+function fist(ctx, p, f, r, open, far, pal) {
+  pal = pal || COLORS;
+  ctx.fillStyle = far ? pal.skinShade : pal.skin; ctx.strokeStyle = INK; ctx.lineWidth = 2;
   ctx.beginPath();
   if (open) ctx.ellipse(p.x + 2 * f, p.y, r * 1.5, r * 0.75, 0, 0, Math.PI * 2);
   else ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -82,11 +83,12 @@ function fist(ctx, p, f, r, open, far) {
     ctx.lineWidth = 1.2; ctx.stroke();
   }
 }
-function foot(ctx, k, p, f, big, far) {
+function foot(ctx, k, p, f, big, far, pal) {
+  pal = pal || COLORS;
   // toes always point forward (towards the opponent)
   const fx = f, fy = 0;
   const s = big ? 1.6 : 1;
-  ctx.fillStyle = far ? COLORS.skinShade : COLORS.skin; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+  ctx.fillStyle = far ? pal.skinShade : pal.skin; ctx.strokeStyle = INK; ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(p.x - fx * 6 * s, p.y - fy * 6 * s);
   ctx.quadraticCurveTo(p.x + fx * 12 * s - fy * 6 * s, p.y + fy * 12 * s + fx * 6 * s, p.x + fx * 16 * s, p.y + fy * 16 * s + 1);
@@ -100,7 +102,7 @@ function drawFighterFront(ctx, fighter) {
   const meta = POSE_META[fighter.poseName] || {};
   const S = SCALE;
   const J = (i) => ({ x: gx + pose[i * 2] * f * S, y: gy - pose[i * 2 + 1] * S });
-  const belt = fighter.beltColor === 'red' ? COLORS.red : COLORS.black;
+  const belt = BELT_HEX[fighter.beltColor] || COLORS.black;
   const open = meta.openHands;
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
@@ -192,6 +194,15 @@ function drawFighterFront(ctx, fighter) {
   ctx.moveTo(head.x + r * 0.65, head.y - r * 0.3); ctx.lineTo(head.x + r * 0.15, head.y - r * 0.2); ctx.stroke();
   ctx.lineWidth = 1.4;
   ctx.beginPath(); ctx.moveTo(head.x - r * 0.25, head.y + r * 0.55); ctx.lineTo(head.x + r * 0.25, head.y + r * 0.55); ctx.stroke();
+  if (fighter.hachimaki) {
+    ctx.strokeStyle = COLORS.red; ctx.lineCap = 'round';
+    ctx.lineWidth = 3.6 * S;
+    ctx.beginPath(); ctx.moveTo(head.x - r * 1.02, head.y - r * 0.18); ctx.lineTo(head.x + r * 1.02, head.y - r * 0.18); ctx.stroke();
+    ctx.lineWidth = 2.6 * S;
+    ctx.beginPath(); ctx.moveTo(head.x + r * 0.9, head.y - r * 0.05); ctx.lineTo(head.x + r * 1.5, head.y + r * 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(head.x + r * 0.7, head.y + r * 0.1); ctx.lineTo(head.x + r * 1.3, head.y + r * 0.85); ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
   }
 }
 
@@ -200,48 +211,57 @@ function drawFighter(ctx, fighter) {
   const pose = fighter.pose, f = fighter.facing, gx = fighter.x, gy = GROUND;
   const meta = POSE_META[fighter.poseName] || {};
   const S = SCALE;
-  const J = (i) => ({ x: gx + pose[i * 2] * f * S, y: gy - pose[i * 2 + 1] * S });
-  const belt = fighter.beltColor === 'red' ? COLORS.red : COLORS.black;
+  // per-fighter build: heavy = wider limbs/torso, tall = taller figure
+  const bw = fighter.build === 'heavy' ? 1.32 : 1;
+  const hS = fighter.heightScale || 1;
+  const J = (i) => ({ x: gx + pose[i * 2] * f * S * (bw > 1 ? 1.08 : 1), y: gy - pose[i * 2 + 1] * S * hS });
+  const belt = BELT_HEX[fighter.beltColor] || COLORS.black;
   const open = meta.openHands;
+  // per-fighter appearance: skin/hair palette and gi colour
+  const pal = {
+    skin: fighter.skin || COLORS.skin, skinShade: fighter.skinShade || COLORS.skinShade,
+    gi: fighter.gi || COLORS.gi, giShade: fighter.giShade || COLORS.giShade, giLine: fighter.giLine || COLORS.giLine,
+  };
 
   ctx.save();
   if (fighter.hitFlash > 0 && Math.floor(performance.now() / 30) % 2 === 0) ctx.globalAlpha = 0.55;
 
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
-  ctx.beginPath(); ctx.ellipse(gx, gy + 3, 34 * S, 6 * S, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(gx, gy + 3, 34 * S * (bw > 1 ? 1.15 : 1), 6 * S, 0, 0, Math.PI * 2); ctx.fill();
 
   const hip = J(0), chest = J(1), neck = J(2), head = J(3);
   const sF = J(4), eF = J(5), hF = J(6), sB = J(7), eB = J(8), hB = J(9);
   const hipF = J(10), kF = J(11), fF = J(12), hipB = J(13), kB = J(14), fB = J(15);
-  const legW = 19 * S, shinW = 15 * S, armW = 13 * S, foreW = 10 * S;
+  const legW = 19 * S * bw, shinW = 15 * S * bw, armW = 13 * S * bw, foreW = 10 * S * bw;
 
   // camera side is the rear side of the body: rear arm (hikite) and rear leg are near and drawn last;
   // the lead arm (guard) and lead leg are on the far side, drawn behind the jacket but visible as they extend forward
   const drawFarLeg = () => {
-    limb(ctx, hipF, kF, legW, legW - 2, COLORS.giShade, null);
-    limb(ctx, kF, fF, shinW, shinW - 2, COLORS.giShade, null);
-    foot(ctx, kF, fF, f, false, true);
+    limb(ctx, hipF, kF, legW, legW - 2, pal.giShade, null);
+    limb(ctx, kF, fF, shinW, shinW - 2, pal.giShade, null);
+    foot(ctx, kF, fF, f, false, true, pal);
   };
   const drawFarArm = () => {
-    limb(ctx, sF, eF, armW, armW - 1, COLORS.giShade, null);
-    limb(ctx, eF, hF, foreW, foreW - 2, COLORS.skinShade, null);
-    fist(ctx, hF, f, 6.5 * S, open, true);
+    limb(ctx, sF, eF, armW, armW - 1, pal.giShade, null);
+    limb(ctx, eF, hF, foreW, foreW - 2, pal.skinShade, null);
+    fist(ctx, hF, f, 6.5 * S, open, true, pal);
   };
   const drawNearLeg = () => {
     const m = meta.depthLeg ? 1.45 : 1;
-    limb(ctx, hipB, kB, legW * m, (legW - 2) * m, COLORS.gi, COLORS.giShade);
-    limb(ctx, kB, fB, shinW * m, (shinW - 2) * m, COLORS.gi, COLORS.giShade);
-    foot(ctx, kB, fB, f, meta.depthLeg, false);
+    limb(ctx, hipB, kB, legW * m, (legW - 2) * m, pal.gi, pal.giShade);
+    limb(ctx, kB, fB, shinW * m, (shinW - 2) * m, pal.gi, pal.giShade);
+    foot(ctx, kB, fB, f, meta.depthLeg, false, pal);
   };
   const drawNearArm = () => {
-    limb(ctx, sB, eB, armW, armW - 1, COLORS.gi, COLORS.giShade);
-    limb(ctx, eB, hB, foreW, foreW - 2, COLORS.skin, COLORS.skinShade);
-    fist(ctx, hB, f, 6.5 * S, open, false);
+    limb(ctx, sB, eB, armW, armW - 1, pal.gi, pal.giShade);
+    limb(ctx, eB, hB, foreW, foreW - 2, pal.skin, pal.skinShade);
+    fist(ctx, hB, f, 6.5 * S, open, false, pal);
   };
 
   drawHead();
   drawFarLeg();
-  drawFarArm();
+  // gedan-barai / any low sweep: the sweeping far arm must read in FRONT of the legs, not behind them
+  if (!meta.sweepFront) drawFarArm();
 
   // jacket: shoulders -> hips, hem skirt below belt
   const hemF = { x: hipF.x + 6 * f * S, y: hipF.y + 16 * S }, hemB = { x: hipB.x - 8 * f * S, y: hipB.y + 16 * S };
@@ -251,9 +271,9 @@ function drawFighter(ctx, fighter) {
   ctx.lineTo(hemB.x, hemB.y);
   ctx.quadraticCurveTo(chest.x - 16 * f * S, chest.y, sB.x - 6 * f * S, sB.y - 4 * S);
   ctx.closePath();
-  ctx.fillStyle = COLORS.gi; ctx.fill();
+  ctx.fillStyle = pal.gi; ctx.fill();
   ctx.save(); ctx.clip();
-  ctx.fillStyle = COLORS.giShade;
+  ctx.fillStyle = pal.giShade;
   ctx.beginPath();
   ctx.moveTo(sB.x - 8 * f * S, sB.y - 6 * S); ctx.lineTo(chest.x - 4 * f * S, chest.y - 10 * S);
   ctx.lineTo(hemB.x + 10 * f * S, hemB.y + 4 * S); ctx.lineTo(hemB.x - 10 * f * S, hemB.y + 4 * S); ctx.closePath(); ctx.fill();
@@ -264,7 +284,7 @@ function drawFighter(ctx, fighter) {
   ctx.moveTo(neck.x - 7 * f * S, neck.y - 2 * S); ctx.lineTo(chest.x + 4 * f * S, chest.y - 2 * S);
   ctx.lineTo(chest.x + 4 * f * S, hip.y + 4 * S);
   ctx.moveTo(neck.x + 7 * f * S, neck.y - 2 * S); ctx.lineTo(chest.x + 4 * f * S, chest.y - 2 * S);
-  ctx.strokeStyle = COLORS.giLine; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.strokeStyle = pal.giLine; ctx.lineWidth = 1.6; ctx.stroke();
   // belt
   const bt = 0.72, bb = 0.8;
   const L = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
@@ -279,13 +299,26 @@ function drawFighter(ctx, fighter) {
   ctx.lineCap = 'butt';
 
   drawNearLeg();
+  // a low sweep (gedan-barai) draws its far arm here, on top of the legs
+  if (meta.sweepFront) drawFarArm();
   drawNearArm();
   ctx.restore();
 
   // head is drawn first so every arm passes in front of it
   function drawHead() {
   const r = 15 * S;
-  ctx.fillStyle = COLORS.skin; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+  const hairCol = fighter.hair || COLORS.hair;
+  // long hair (behind the head) is drawn first so the face and shoulders sit over it
+  if (fighter.longHair) {
+    ctx.fillStyle = hairCol; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(head.x - r * 0.9 * f, head.y - r * 0.6);
+    ctx.quadraticCurveTo(head.x - r * 1.5 * f, head.y + r * 0.4, head.x - r * 1.25 * f, head.y + r * 2.6);
+    ctx.quadraticCurveTo(head.x - r * 0.7 * f, head.y + r * 2.4, head.x - r * 0.35 * f, head.y + r * 1.0);
+    ctx.quadraticCurveTo(head.x - r * 0.8 * f, head.y + r * 0.2, head.x - r * 0.4 * f, head.y - r * 0.6);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = pal.skin; ctx.strokeStyle = INK; ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(head.x - r, head.y - 2);
   ctx.quadraticCurveTo(head.x - r, head.y + r * 1.1, head.x + 3 * f, head.y + r * 1.05);
@@ -293,7 +326,7 @@ function drawFighter(ctx, fighter) {
   ctx.arc(head.x, head.y - 2, r, f > 0 ? 0 : Math.PI, f > 0 ? Math.PI : 0, true);
   ctx.closePath(); ctx.fill(); ctx.stroke();
   // hair (spiky, anime-style)
-  ctx.fillStyle = COLORS.hair;
+  ctx.fillStyle = hairCol;
   ctx.beginPath();
   ctx.moveTo(head.x - r * 1.05 * f, head.y + 2);
   ctx.lineTo(head.x - r * 1.15 * f, head.y - r * 0.6);
@@ -312,7 +345,22 @@ function drawFighter(ctx, fighter) {
   ctx.strokeStyle = INK; ctx.lineWidth = 2.2;
   ctx.beginPath(); ctx.moveTo(head.x + r * 0.15 * f, head.y - r * 0.32); ctx.lineTo(head.x + r * 0.75 * f, head.y - r * 0.2); ctx.stroke();
   ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(head.x + r * 0.35 * f, head.y + r * 0.55); ctx.lineTo(head.x + r * 0.7 * f, head.y + r * 0.5); ctx.stroke();
+  if (fighter.smirk) {
+    // a crooked villain's smirk
+    ctx.beginPath(); ctx.moveTo(head.x + r * 0.25 * f, head.y + r * 0.6);
+    ctx.quadraticCurveTo(head.x + r * 0.55 * f, head.y + r * 0.42, head.x + r * 0.8 * f, head.y + r * 0.58); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(head.x + r * 0.35 * f, head.y + r * 0.55); ctx.lineTo(head.x + r * 0.7 * f, head.y + r * 0.5); ctx.stroke();
+  }
+  if (fighter.hachimaki) {
+    ctx.strokeStyle = COLORS.red; ctx.lineCap = 'round';
+    ctx.lineWidth = 3.6 * S;
+    ctx.beginPath(); ctx.moveTo(head.x - r * 1.05, head.y - r * 0.12); ctx.lineTo(head.x + r * 1.05, head.y - r * 0.18); ctx.stroke();
+    ctx.lineWidth = 2.6 * S;
+    ctx.beginPath(); ctx.moveTo(head.x - r * f, head.y - r * 0.05); ctx.lineTo(head.x - r * 1.7 * f, head.y + r * 0.35); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(head.x - r * 0.9 * f, head.y + r * 0.15); ctx.lineTo(head.x - r * 1.9 * f, head.y + r * 0.75); ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
   }
 }
 
@@ -414,7 +462,8 @@ function drawDojo(ctx) {
   for (let x = 0; x <= W; x += 160) { ctx.beginPath(); ctx.moveTo(x, GROUND); ctx.lineTo(x, H); ctx.stroke(); }
   ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;
   for (let y = GROUND + 8; y < H; y += 8) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-  ctx.fillStyle = '#c1272d'; ctx.fillRect(0, GROUND - 2, W, 4);
+  // tatami border tape in the traditional blue, not red
+  ctx.fillStyle = '#2b4a8a'; ctx.fillRect(0, GROUND - 2, W, 4);
 }
 
 // ==================== HUD ====================
@@ -430,8 +479,8 @@ function drawHUD(ctx, game) {
   ctx.textAlign = 'left'; ctx.fillStyle = '#f3efe6'; ctx.fillText(String(p1.score), 30, 80);
   ctx.textAlign = 'right'; ctx.fillStyle = '#e06060'; ctx.fillText(String(p2.score), W - 30, 80);
   ctx.font = '11px "SF Mono", monospace'; ctx.fillStyle = '#8a7a6a';
-  ctx.textAlign = 'left'; ctx.fillText('KURO-OBI', 30, 96);
-  ctx.textAlign = 'right'; ctx.fillText('AKA-OBI', W - 30, 96);
+  ctx.textAlign = 'left'; ctx.fillText(BELT_NAME[p1.beltColor] || 'KURO-OBI', 30, 96);
+  ctx.textAlign = 'right'; ctx.fillText(BELT_NAME[p2.beltColor] || 'AKA-OBI', W - 30, 96);
 
   ctx.textAlign = 'center';
   // status line on the tatami strip, clear of the announcements
@@ -505,11 +554,13 @@ function drawTitle(ctx, game, kata) {
   ctx.font = '12px "SF Mono", monospace';
   const rows = [
     ['↑ (tap)', 'Kizami-zuki jodan, or gyaku-zuki stepping through into jun-zuki'],
-    ['→', 'Oi-zuki chudan (steps in, zenkutsu-dachi)'],
-    ['↓ + →  /  ↑ + →', 'Gyaku-zuki chudan / jodan'],
+    ['→', 'Gyaku-zuki chudan (rear-hand punch)'],
+    ['↑ + →', 'Gyaku-zuki jodan'],
+    ['↓ + →', 'Oi-zuki chudan (steps in, zenkutsu-dachi)'],
     ['SPACE', 'Mae-geri (front leg, belt height)'],
-    ['↑ + SPACE', 'Mawashi-geri jodan (rear leg, pivoting)'],
-    ['←', 'Uchi-uke (stops chudan) · step back'],
+    ['↑ + SPACE', 'Mawashi-geri (chudan until green belt, then jodan)'],
+    ['→ + SPACE', 'Yoko-geri chudan (side kick, thrust)'],
+    ['←', 'Uchi-uke (stops chudan) · block in place'],
     ['← + ↑', 'Age-uke (stops jodan)'],
     ['← + ↓', 'Gedan-barai (stops mae-geri)'],
     ['', 'Correct uke = automatic counter: gyaku-zuki or nage-waza'],
@@ -526,17 +577,22 @@ function drawTitle(ctx, game, kata) {
   ctx.font = 'bold 13px "SF Mono", monospace'; ctx.fillStyle = '#e8e0d0';
   const my = 70;
   ctx.fillText('MODE  (↑ ↓)', W - 40, my);
-  const modes = [['ippon', 'JIYU IPPON KUMITE'], ['jiyu', 'JIYU KUMITE (free)']];
-  modes.forEach((m, i) => {
-    const sel = game.mode === m[0];
+  const dojoBeltLabel = BELTS[game.dojo ? game.dojo.loadBelt() : 0].label;
+  const modes = game.modes;
+  modes.forEach((id, i) => {
+    const sel = game.mode === id;
     ctx.font = (sel ? 'bold ' : '') + '13px "SF Mono", monospace';
     ctx.fillStyle = sel ? '#d4a843' : '#665b4f';
-    ctx.fillText((sel ? '▶ ' : '') + m[1], W - 40, my + 22 + i * 18);
+    ctx.fillText((sel ? '▶ ' : '') + (MODE_LABELS[id] || id), W - 40, my + 22 + i * 18);
   });
   ctx.font = '11px "SF Mono", monospace'; ctx.fillStyle = '#665b4f';
-  ctx.fillText(game.mode === 'ippon' ? 'one announced attack · uke · counter · roles alternate' : 'free sparring for points', W - 40, my + 62);
+  const modeSub = game.mode === 'ippon' ? 'one announced attack · uke · counter · roles alternate'
+    : game.mode === 'jiyu' ? 'free sparring for points'
+    : game.mode === 'rumble' ? 'continuous — no stops, chain your attacks'
+    : 'seiza · sensei drills · belt ceremony (' + dojoBeltLabel + ')';
+  ctx.fillText(modeSub, W - 40, my + 22 + modes.length * 18 + 8);
   ctx.font = 'bold 12px "SF Mono", monospace'; ctx.fillStyle = '#d4a843';
-  ctx.fillText('ENTER  →  LEVEL ' + game.level, W - 40, my + 86);
+  ctx.fillText(game.mode === 'dojo' ? 'ENTER  →  ENTER THE DOJO' : 'ENTER  →  LEVEL ' + game.level, W - 40, my + 22 + modes.length * 18 + 32);
   ctx.textAlign = 'left';
   ctx.font = '12px "SF Mono", monospace'; ctx.fillStyle = '#8a7a6a';
   ctx.fillText('POINTS: yuko 1 (tsuki)  ·  waza-ari 2 (mae-geri, ashi-waza)  ·  ippon 3 (jodan geri, nage + todome)', kx, ky + 190);
@@ -570,6 +626,92 @@ function drawKataView(ctx, kata) {
   ctx.fillText(kata.label, W / 2, GROUND + 34);
   ctx.font = '11px "SF Mono", monospace'; ctx.fillStyle = '#665b4f';
   ctx.fillText('← →  step   ·   ↑ ↓  kata   ·   SPACE  ' + (kata.manual ? 'play' : 'pause') + '   ·   ESC  back', W / 2, H - 22);
+  drawAudioStatus(ctx);
+}
+
+// ==================== DOJO (story mode) ====================
+// the founder's portrait (user's own pic/funakoshi.png), framed and hung on the wall — dojo only
+const funakoshiImg = new Image();
+funakoshiImg.src = 'pic/funakoshi.png';
+function drawFounderPortrait(ctx, cx, cy, w, h) {
+  // dark wood frame + mat
+  ctx.fillStyle = '#2a2018'; ctx.fillRect(cx - w / 2 - 5, cy - h / 2 - 5, w + 10, h + 10);
+  ctx.strokeStyle = '#0a0806'; ctx.lineWidth = 2; ctx.strokeRect(cx - w / 2 - 5, cy - h / 2 - 5, w + 10, h + 10);
+  ctx.fillStyle = '#d8cdb4'; ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+  if (funakoshiImg.complete && funakoshiImg.naturalWidth > 0) {
+    // contain the photo within the mat, preserving aspect ratio
+    const ar = funakoshiImg.naturalWidth / funakoshiImg.naturalHeight;
+    const iw = ar >= w / h ? w : h * ar, ih = ar >= w / h ? w / ar : h;
+    ctx.drawImage(funakoshiImg, cx - iw / 2, cy - ih / 2, iw, ih);
+  }
+  ctx.strokeStyle = '#0a0806'; ctx.lineWidth = 1; ctx.strokeRect(cx - w / 2, cy - h / 2, w, h);
+}
+
+// board-break prop: a board on two stands between the two fighters, or splinters right after a break
+function drawBoard(ctx, cx, broken) {
+  const y = GROUND - 144 * SCALE, bw = 14 * SCALE, bh = 52 * SCALE;
+  ctx.strokeStyle = INK; ctx.lineWidth = 2;
+  // stands rising from the floor up to the board held at chest height
+  ctx.fillStyle = '#4a3524';
+  ctx.fillRect(cx - 22 * SCALE, y - bh / 2, 6 * SCALE, GROUND - (y - bh / 2)); ctx.strokeRect(cx - 22 * SCALE, y - bh / 2, 6 * SCALE, GROUND - (y - bh / 2));
+  ctx.fillRect(cx + 16 * SCALE, y - bh / 2, 6 * SCALE, GROUND - (y - bh / 2)); ctx.strokeRect(cx + 16 * SCALE, y - bh / 2, 6 * SCALE, GROUND - (y - bh / 2));
+  ctx.fillStyle = '#c79a5a';
+  if (broken > 0) {
+    // two halves flung apart
+    ctx.save(); ctx.translate(cx - 6 * SCALE, y - bh / 4); ctx.rotate(-0.5);
+    ctx.fillRect(-bw / 2, -bh / 4, bw, bh / 2); ctx.strokeRect(-bw / 2, -bh / 4, bw, bh / 2); ctx.restore();
+    ctx.save(); ctx.translate(cx + 6 * SCALE, y + bh / 4); ctx.rotate(0.5);
+    ctx.fillRect(-bw / 2, -bh / 4, bw, bh / 2); ctx.strokeRect(-bw / 2, -bh / 4, bw, bh / 2); ctx.restore();
+  } else {
+    ctx.fillRect(cx - bw / 2, y - bh / 2, bw, bh); ctx.strokeRect(cx - bw / 2, y - bh / 2, bw, bh);
+    ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx, y - bh / 2 + 4); ctx.lineTo(cx, y + bh / 2 - 4); ctx.stroke();
+  }
+}
+
+function drawDojoScene(ctx, dojo) {
+  drawDojo(ctx);
+  drawFounderPortrait(ctx, 340, 120, 64, 78);
+  // black belt is a solo tameshiwari: only the shodan student and the board, no sensei
+  const soloBlack = dojo.current.kind === 'break';
+  if (dojo.p1 && dojo.p2) {
+    const fighters = soloBlack ? [dojo.p1] : [dojo.p1, dojo.p2];
+    const order = fighters.sort((a, b) =>
+      (a.state === 'knockdown' || a.state === 'getup' ? 0 : 1) - (b.state === 'knockdown' || b.state === 'getup' ? 0 : 1));
+    for (const f of order) drawFighter(ctx, f);
+  }
+  // the board stands at a fixed spot out in front of the student, struck to break
+  if (dojo.sub === 'drill' && soloBlack) drawBoard(ctx, dojo.boardX, dojo.boardFx);
+  drawParticles(ctx);
+  ctx.textAlign = 'center';
+  const b = dojo.current;
+  ctx.font = 'bold 18px "SF Mono", monospace'; ctx.fillStyle = '#d4a843';
+  ctx.fillText('DOJO  ·  ' + b.label.toUpperCase(), W / 2, 34);
+  if (b.task) {
+    ctx.font = '12px "SF Mono", monospace'; ctx.fillStyle = '#9a8a7a';
+    ctx.fillText(b.task, W / 2, 54);
+  }
+  if (dojo.sub === 'drill' && b.kind === 'brown' && dojo.brownStage === 'pads') {
+    ctx.font = 'bold 14px "SF Mono", monospace'; ctx.fillStyle = '#f3efe6';
+    ctx.fillText(dojo.padHits + ' / 8  pad hits', W / 2, 74);
+  } else if (dojo.sub === 'drill' && b.kind === 'break') {
+    ctx.font = 'bold 14px "SF Mono", monospace'; ctx.fillStyle = '#f3efe6';
+    ctx.fillText('boards broken: ' + dojo.breakCount, W / 2, 74);
+  } else if (dojo.sub === 'drill' && b.need) {
+    ctx.font = 'bold 14px "SF Mono", monospace'; ctx.fillStyle = '#f3efe6';
+    ctx.fillText(dojo.progress + ' / ' + b.need, W / 2, 74);
+  }
+  if (dojo.sub === 'seiza') {
+    ctx.font = '16px "SF Mono", monospace'; ctx.fillStyle = '#e8e0d0';
+    ctx.fillText('SEIZA', W / 2, H / 2 + 74);
+  }
+  if (dojo.sub === 'ceremony') {
+    ctx.font = 'bold 28px "Georgia", serif'; ctx.fillStyle = '#d4a843';
+    ctx.fillText(b.id === 'black' ? 'SHODAN!' : b.label.toUpperCase() + '!', W / 2, H / 2 - 70);
+  }
+  if (dojo.game.announceTimer > 0) drawAnnounce(ctx, dojo.game.announceText, dojo.game.announceSub, Math.min(1, dojo.game.announceTimer / 0.3));
+  ctx.font = '11px "SF Mono", monospace'; ctx.fillStyle = '#665b4f';
+  ctx.fillText('ESC  back to title', W / 2, H - 8);
   drawAudioStatus(ctx);
 }
 

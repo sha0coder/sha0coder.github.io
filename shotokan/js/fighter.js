@@ -112,16 +112,32 @@ class Fighter {
     }
   }
 
-  // successful uke: counter with gyaku-zuki, or judo when close (less likely)
-  queueCounter(opponent, move) {
+  // successful uke: counter with gyaku-zuki (chudan or jodan, at random) or judo when close (less likely);
+  // an uchi-uke specifically opens a 3-way counter (gyaku most likely, then the throw, then a mawashi-geri)
+  queueCounter(opponent, move, game) {
     const dist = Math.abs(this.x - opponent.x);
     const closeEnough = dist < THROW_RANGE * 1.3 * SCALE;
-    let counter = 'gyakuZuki';
-    if (this.blockKind !== 'age' && closeEnough && Math.random() < 0.35) {
-      const judo = this.blockKind === 'gedan'
-        ? ['deAshiBarai', 'osotoGari', 'koUchiGari']
-        : ['taiOtoshi', 'haraiGoshi', 'osotoGari'];
-      counter = judo[Math.floor(Math.random() * judo.length)];
+    // nage-waza counters stay out of the game entirely until blue belt is earned
+    const throwsUnlocked = !game || !game.dojo || game.forceThrowCounter || game.dojo.loadBelt() >= BLUE_BELT_INDEX;
+    const canThrow = this.blockKind !== 'age' && closeEnough && throwsUnlocked;
+    const jodanMawashi = !game || !game.dojo || game.dojo.loadBelt() >= GREEN_BELT_INDEX;
+    const mawashiCounter = jodanMawashi ? 'mawashiGeri' : 'mawashiGeriChudan';
+    const judoPool = this.blockKind === 'gedan'
+      ? ['deAshiBarai', 'osotoGari', 'koUchiGari']
+      : ['taiOtoshi', 'haraiGoshi', 'osotoGari'];
+    const gyakuRandom = () => Math.random() < 0.5 ? 'gyakuZuki' : 'gyakuZukiJodan';
+    let counter;
+    if (game && game.forceThrowCounter && canThrow) {
+      counter = judoPool[Math.floor(Math.random() * judoPool.length)];
+    } else if (this.blockKind === 'uchi') {
+      const r = Math.random();
+      counter = (canThrow && r < 0.25) ? judoPool[Math.floor(Math.random() * judoPool.length)]
+        : r < 0.45 ? mawashiCounter
+        : gyakuRandom();
+    } else if (canThrow && Math.random() < 0.35) {
+      counter = judoPool[Math.floor(Math.random() * judoPool.length)];
+    } else {
+      counter = gyakuRandom();
     }
     this.pendingCounter = counter;
     this.counterDelay = 1.0;
@@ -164,12 +180,19 @@ class Fighter {
     // pending counter fires once we are free
     if (this.pendingCounter) {
       this.counterDelay -= dt;
+      // yori-ashi: ease into range smoothly during the wait, instead of snapping into place
+      // the instant the counter fires — a real step, not a teleport
+      if (opponent) {
+        // stop a touch further out so the counter doesn't crowd into the opponent
+        const want = 82 * SCALE, dist = Math.abs(this.x - opponent.x);
+        if (dist > want) {
+          const k = Math.min(1, dt * 3.2);
+          this.x += this.facing * (dist - want) * k;
+        }
+      }
       if (this.counterDelay <= 0 && (this.canAct || this.state === 'block' || this.state === 'counterWait')) {
         const c = this.pendingCounter;
         this.pendingCounter = null;
-        // yori-ashi: slide in so the counter reaches
-        const want = 68 * SCALE, dist = Math.abs(this.x - opponent.x);
-        if (dist > want) this.x += this.facing * (dist - want);
         if (MOVES[c]) {
           this.startMove(c);
           if (MOVES[c].kiaiOnHit) { SFX.kiai(this.kiaiPitch); this.kiaiDone = true; }
@@ -195,8 +218,10 @@ class Fighter {
         break;
       case 'attack': {
         const phase = this.moveData.phases[this.movePhase];
-        // step in only until the technique is at striking distance (ma-ai), never onto the opponent
-        if (phase.move && (!opponent || Math.abs(this.x - opponent.x) > 84 * SCALE)) this.x += this.facing * this.moveSpeed * dt;
+        // step in only until the technique is at striking distance (ma-ai), never onto the opponent;
+        // a move can override the stop distance (e.g. a full step-through commits closer than a jab)
+        const stopDist = (this.moveData.stepStop || 84) * SCALE;
+        if (phase.move && (!opponent || Math.abs(this.x - opponent.x) > stopDist)) this.x += this.facing * this.moveSpeed * dt;
         if (phase.retreat) this.x -= this.facing * this.backSpeed * dt;
         if (phase.active && !this.hasHit) this.checkHit(opponent, game);
         if (this.state !== 'attack') break;
@@ -209,7 +234,9 @@ class Fighter {
           } else {
             const next = this.moveData.phases[this.movePhase];
             this.stateTimer = next.dur;
-            this.setPose(next.pose, 18);
+            // a snapping strike (mae-geri, yoko-geri...) can ask for a faster blend into its
+            // active pose so the limb visibly reaches full extension before the hit is checked
+            this.setPose(next.pose, next.blend || 18);
             if (next.rehit) this.hasHit = false;
             if (next.active && this.moveData.kiai) SFX.kiai(this.kiaiPitch);
           }
@@ -288,7 +315,8 @@ class Fighter {
         opponent.vx = 0;
         this.vx = 0;
         game.onBlock(opponent, this, this.moveData);
-        opponent.queueCounter(this, this.moveData);
+        // a plain "the sensei blocked it" drill rep isn't a counter-attack cycle
+        if (!(game && game.suppressCounter)) opponent.queueCounter(this, this.moveData, game);
       } else {
         if (this.moveData.kiaiOnHit && !this.kiaiDone) SFX.kiai(this.kiaiPitch);
         if (this.moveData.kind === 'kick') SFX.hitHeavy(); else SFX.hitLight();
@@ -302,7 +330,7 @@ class Fighter {
   }
 
   // ---------- player input (cursors + space) ----------
-  handleInput(opponent) {
+  handleInput(opponent, game) {
     if (!this.isPlayer) return;
     const back = this.facing > 0 ? keys['ArrowLeft'] : keys['ArrowRight'];
     const fwd = this.facing > 0 ? keys['ArrowRight'] : keys['ArrowLeft'];
@@ -318,19 +346,24 @@ class Fighter {
         return;
       }
       if (consumePress('Space')) {
-        this.startMove(up ? 'mawashiGeri' : 'maeGeri');
+        // mawashi-geri is chudan until green belt is actually earned, then it rises to jodan —
+        // this reads the persisted dojo rank directly, so it applies in every mode, not just the dojo
+        const jodanMawashi = !game || !game.dojo || game.dojo.loadBelt() >= GREEN_BELT_INDEX;
+        this.startMove(up ? (jodanMawashi ? 'mawashiGeri' : 'mawashiGeriChudan') : fwd ? 'yokoGeri' : 'maeGeri');
         return;
       }
       if (fwdPressed || (fwd && this.repeatTimer <= 0)) {
         this.repeatTimer = 0.8;
-        this.startMove(down ? 'gyakuZuki' : up ? 'gyakuZukiJodan' : 'oiZuki');
+        // → alone is gyaku-zuki chudan (the rear-hand punch — ↑ alone already covers the
+        // lead/front-hand punch, kizami-zuki); ↓+→ keeps the long stepping oi-zuki lunge
+        this.startMove(down ? 'oiZuki' : up ? 'gyakuZukiJodan' : 'gyakuZuki');
         return;
       }
     }
     if (back) {
+      // back is always a block, held on the spot — it never steps the fighter backwards
       const kind = up ? 'age' : down ? 'gedan' : 'uchi';
       if (this.state !== 'block' || this.blockKind !== kind) { this.blockHeld = 0; this.setBlock(kind); }
-      if (kind === 'uchi') this.x -= this.facing * WALK_SPEED * 0.55 * dtGlobal;
       return;
     }
     this.state = 'idle';
@@ -348,7 +381,7 @@ class AIController {
       // jiyu ippon kumite: the CPU only answers the player's single attack with an uke
       if (opp.state === 'attack' && opp.movePhase <= 1 && me.canAct && !me._reacted) {
         me._reacted = true;
-        const skill = [0, 0.4, 0.6, 0.8][L] || 0.8;
+        const skill = [0, 0.4, 0.6, 0.8, 0.82, 0.85, 0.87, 0.9, 0.92, 0.94, 0.96][L] || 0.9;
         const lvl = opp.moveData.level;
         const right = lvl === 'jodan' ? 'age' : lvl === 'kick' ? 'gedan' : 'uchi';
         if (Math.random() < skill) me.setBlock(right);
@@ -360,15 +393,15 @@ class AIController {
       }
       return;
     }
-    const aggression = [0, 0.18, 0.4, 0.65][L] || 0.65;
-    const blockSkill = [0, 0.35, 0.55, 0.75][L] || 0.75;
+    const aggression = [0, 0.18, 0.4, 0.65, 0.7, 0.74, 0.78, 0.82, 0.85, 0.88, 0.92][L] || 0.7;
+    const blockSkill = [0, 0.35, 0.55, 0.75, 0.78, 0.8, 0.82, 0.85, 0.88, 0.9, 0.93][L] || 0.8;
     const dist = Math.abs(me.x - opp.x);
 
     // react to an incoming attack: sen (kizami-zuki into the step-in) at higher levels, or the right uke
     if (opp.state === 'attack' && opp.movePhase === 0 && me.canAct && dist < 150 * SCALE) {
       if (!me._reacted) {
         me._reacted = true;
-        const senChance = [0, 0, 0.2, 0.35][L] || 0.35;
+        const senChance = [0, 0, 0.2, 0.35, 0.4, 0.44, 0.48, 0.52, 0.56, 0.6, 0.64][L] || 0.4;
         if (dist < 125 * SCALE && Math.random() < senChance) { me.startMove('kizamiZuki'); return; }
         if (Math.random() < blockSkill) {
           const lvl = opp.moveData.level;
@@ -385,6 +418,19 @@ class AIController {
     }
 
     if (!me.canAct) return;
+
+    // from level 3: if the player camps in one uke, attack a height that block does NOT cover
+    this._openPunish = Math.max(0, (this._openPunish || 0) - dt);
+    if (L >= 3 && opp.state === 'block' && opp.blockHeld > 0.9 && this._openPunish <= 0 && dist < 200 * SCALE) {
+      const bk = opp.blockKind;
+      const pool = bk === 'uchi' ? ['gyakuZukiJodan', 'maeGeri', 'mawashiGeri']   // beat a chudan block: jodan or kick
+        : bk === 'age' ? ['gyakuZuki', 'oiZuki', 'maeGeri']                        // beat a jodan block: chudan or kick
+        : ['gyakuZukiJodan', 'gyakuZuki', 'mawashiGeri'];                          // beat a gedan block: jodan or chudan
+      this._openPunish = 1.8;
+      me.startMove(pool[Math.floor(Math.random() * pool.length)]);
+      return;
+    }
+
     this.think -= dt;
     if (me.state === 'block' && me.blockHeld < 0.35) return;
     if (this.think > 0) {

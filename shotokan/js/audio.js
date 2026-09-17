@@ -259,9 +259,66 @@ const BASS = {
 let totalSteps = 0;
 for (const s of SECTIONS) { s.start = totalSteps; s.steps = s.chords.length * 16; totalSteps += s.steps; }
 
+// ==================== DOJO theme (calm and spacious, not a chase) ====================
+// same A-minor world as the combat track, but slow, sustained and sparse: long triangle/sine
+// drone chords instead of a chip arpeggio, a soft "temple" hit instead of a drum kit, and an
+// occasional high bell shimmer for the "epic" touch without ever feeling driven.
+// Four distinct 8-bar movements (A calm · B lift · C reflective · A' resolve) = 32 bars before
+// it repeats, so it breathes and develops instead of looping every few seconds.
+const DOJO_MEL_A = expand([
+  [7, 8], [10, 4], [8, 4],
+  [8, 8], [N, 8],
+  [12, 8], [10, 4], [8, 4],
+  [7, 12], [N, 4],
+  [7, 8], [10, 4], [8, 4],
+  [5, 8], [8, 8],
+  [8, 6], [10, 2], [8, 4], [7, 4],
+  [7, 16],
+]);
+const DOJO_MEL_B = expand([
+  [12, 8], [14, 8],
+  [15, 8], [14, 4], [12, 4],
+  [17, 8], [15, 4], [14, 4],
+  [12, 12], [10, 4],
+  [14, 8], [12, 8],
+  [10, 8], [12, 4], [8, 4],
+  [10, 8], [7, 8],
+  [8, 16],
+]);
+const DOJO_MEL_C = expand([
+  [N, 4], [3, 4], [7, 8],
+  [8, 8], [7, 4], [5, 4],
+  [N, 4], [5, 4], [8, 8],
+  [10, 12], [8, 4],
+  [7, 8], [5, 8],
+  [3, 8], [7, 8],
+  [8, 8], [10, 4], [12, 4],
+  [7, 16],
+]);
+const DOJO_MEL_AP = expand([
+  [7, 8], [12, 8],
+  [10, 8], [8, 8],
+  [12, 8], [15, 8],
+  [14, 12], [12, 4],
+  [10, 8], [8, 8],
+  [7, 8], [5, 8],
+  [8, 8], [7, 4], [5, 4],
+  [0, 16],
+]);
+const DOJO_SECTIONS = [
+  { chords: [Am, F, C, G, Am, Dm, F, E], melody: DOJO_MEL_A },
+  { chords: [Dm, Am, Bb, F, C, G, Am, E], melody: DOJO_MEL_B },
+  { chords: [Am, C, F, C, Dm, Am, E, E], melody: DOJO_MEL_C },
+  { chords: [F, G, Am, Am, Dm, E, Am, Am], melody: DOJO_MEL_AP },
+];
+let dojoTotalSteps = 0;
+for (const s of DOJO_SECTIONS) { s.start = dojoTotalSteps; s.steps = s.chords.length * 16; dojoTotalSteps += s.steps; }
+
 const MUSIC = {
   playing: false,
+  mode: 'combat', // 'combat' (the fight/title track) or 'dojo' (calm belt-training theme)
   bpm: 138,
+  bpmDojo: 78,
   step: 0,
   nextTime: 0,
   timer: null,
@@ -269,6 +326,14 @@ const MUSIC = {
   baseFreq: 220, // A3
 
   freq(semi) { return this.baseFreq * Math.pow(2, semi / 12); },
+  get currentBpm() { return this.mode === 'dojo' ? this.bpmDojo : this.bpm; },
+
+  setMode(mode) {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    this.step = 0;
+    if (this.playing) this.nextTime = audioCtx.currentTime + 0.05;
+  },
 
   start() {
     ensureAudio();
@@ -286,7 +351,7 @@ const MUSIC = {
   toggle() { this.playing ? this.stop() : this.start(); },
 
   schedule() {
-    const stepDur = 60 / this.bpm / 4;
+    const stepDur = 60 / this.currentBpm / 4;
     while (this.nextTime < audioCtx.currentTime + 0.12) {
       this.playStep(this.step, this.nextTime, stepDur);
       this.nextTime += stepDur;
@@ -332,6 +397,28 @@ const MUSIC = {
       g.gain.setValueAtTime(0.35 * this.volume, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
       o.connect(g); o.start(t); o.stop(t + 0.12);
+    } else if (kind === 'temple') {
+      // a soft, deep hit — a hand drum or temple bell struck once, left to decay, never driving
+      const o = audioCtx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(85, t);
+      o.frequency.exponentialRampToValueAtTime(42, t + 0.5);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.exponentialRampToValueAtTime(0.22 * this.volume, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+      o.connect(g); o.start(t); o.stop(t + 0.95);
+    } else if (kind === 'bell') {
+      // a distant high shimmer for a touch of "epic" without any urgency
+      const o = audioCtx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(1760, t);
+      const o2 = audioCtx.createOscillator();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(2640, t);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.exponentialRampToValueAtTime(0.09 * this.volume, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+      o.connect(g); o2.connect(g); o.start(t); o.stop(t + 1.35); o2.start(t); o2.stop(t + 1.35);
     } else {
       const len = Math.floor(audioCtx.sampleRate * 0.06);
       const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
@@ -348,6 +435,7 @@ const MUSIC = {
   },
 
   playStep(step, t, dur) {
+    if (this.mode === 'dojo') return this.playDojoStep(step, t, dur);
     const s = step % totalSteps;
     const sec = SECTIONS.find(x => s >= x.start && s < x.start + x.steps);
     const local = s - sec.start;
@@ -383,5 +471,26 @@ const MUSIC = {
       if (s16 % 4 === 2) this.drum('hat', t);
       if (lastBar && s16 >= 12) this.drum('snare', t);
     }
+  },
+
+  playDojoStep(step, t, dur) {
+    const s = step % dojoTotalSteps;
+    const sec = DOJO_SECTIONS.find(x => s >= x.start && s < x.start + x.steps);
+    const local = s - sec.start;
+    const absBar = Math.floor(s / 16), bar = Math.floor(local / 16), s16 = local % 16;
+    const chord = sec.chords[bar];
+    // one sustained drone struck per bar — root, octave and fifth — instead of a busy arpeggio
+    if (s16 === 0) {
+      this.voice(this.freq(chord[0] - 12), t, dur * 14, 'sine', 0.16);
+      this.voice(this.freq(chord[0]), t, dur * 15, 'triangle', 0.10);
+      this.voice(this.freq((chord[2] !== undefined ? chord[2] : chord[0] + 7) + 12), t, dur * 15, 'sine', 0.045);
+      this.drum('temple', t);
+      if (absBar % 4 === 0) this.drum('bell', t);
+    }
+    // a soft mid-bar counter-pluck on some bars for movement without adding drums
+    if (s16 === 8 && absBar % 2 === 1) this.voice(this.freq(chord[0] + 7), t, dur * 6, 'sine', 0.05);
+    // a slow, sparse melody line over the drone
+    const m = sec.melody[local];
+    if (m && m.n !== null) this.voice(this.freq(m.n + 12), t, dur * m.len * 0.95, 'triangle', 0.13, { vibrato: true });
   },
 };

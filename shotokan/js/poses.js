@@ -31,6 +31,13 @@ const P = {
     22,152, 48,158, 72,164, -6,152, -10,130, 12,142,
     12,84, 40,42, 42,2, -8,84, -32,40, -56,2
   ],
+  // oi-zuki continuing into jodan reach (front hand raised to head), used when the
+  // step-through gyaku->oi-zuki lands at head height
+  oiZukiJodan: [
+    4,84, 12,120, 14,152, 15,168,
+    22,150, 48,158, 74,166, -6,148, -18,128, -12,102,
+    14,80, 46,42, 46,2, -6,80, -34,38, -62,2
+  ],
   // gyaku-zuki: frontal zenkutsu, rear hand punches, front hand hikite
   gyakuZuki: [
     2,84, 8,120, 10,152, 10,168,
@@ -51,7 +58,18 @@ const P = {
   maeKick: [
     -6,94, -4,130, -4,162, -4,178,
     12,156, 30,142, 38,162, -12,158, -12,136, 8,148,
-    4,90, 40,102, 74,98, -10,90, -16,46, -18,2
+    4,90, 42,108, 76,112, -10,90, -16,46, -18,2
+  ],
+  // yoko-geri kekomi (thrusting side kick) chudan, with the front leg
+  yokoChamber: [
+    -4,98, 2,136, 4,168, 4,184,
+    16,160, 34,146, 42,166, -10,162, -10,140, 10,152,
+    4,94, 26,118, 14,96, -10,94, -16,46, -18,2
+  ],
+  yokoKick: [
+    -8,96, -6,134, -6,166, -6,182,
+    10,158, 28,144, 36,164, -14,160, -14,138, 6,150,
+    4,92, 46,128, 82,132, -10,92, -16,46, -18,2
   ],
   // mawashi-geri jodan with the rear leg, pivoting on the front foot
   mawashiChamber: [
@@ -64,6 +82,12 @@ const P = {
     6,154, 22,140, 28,160, -18,156, -22,134, -4,144,
     -4,90, 2,46, 4,2, 6,90, 36,132, 72,160
   ],
+  // the same technique aimed at the torso instead of the head — used before green belt
+  mawashiKickChudan: [
+    -6,94, -14,128, -18,158, -20,174,
+    6,154, 22,140, 28,160, -18,156, -22,134, -4,144,
+    -4,90, 2,46, 4,2, 6,90, 30,108, 66,124
+  ],
   // uke: always with hikite
   ageUke: [
     -2,86, 4,122, 6,154, 6,170,
@@ -75,9 +99,11 @@ const P = {
     18,148, 36,130, 44,160, -6,150, -18,128, -12,102,
     10,82, 40,42, 40,2, -8,82, -32,40, -58,2
   ],
+  // gedan-barai: the sweeping (front/far) arm reaches well forward and across, so it clearly
+  // passes in front of an incoming mae-geri shin rather than tucking low behind the leg
   gedanBarai: [
     0,82, 6,116, 8,148, 8,164,
-    18,144, 30,116, 44,88, -6,146, -18,126, -12,100,
+    18,146, 40,124, 62,102, -6,146, -18,126, -12,100,
     12,78, 46,42, 46,2, -8,78, -36,38, -64,2
   ],
   // judo (tori)
@@ -156,6 +182,24 @@ const P = {
     14,106, 22,90, 26,102, -8,108, -16,92, -12,80,
     8,50, 22,26, 18,2, -8,50, -18,24, -26,2
   ],
+  // seiza: kneeling, sitting back on the heels, hands resting on the thighs
+  seiza: [
+    0,40, 2,74, 4,102, 4,118,
+    10,96, 12,66, 12,40, -8,96, -10,66, -10,40,
+    8,36, 20,18, 34,2, -8,36, -20,18, -34,2
+  ],
+  // seiza, front view (facing the camera): symmetric kneel, hands resting on the thighs
+  seizaFront: [
+    0,38, 0,72, 0,100, 0,116,
+    14,94, 16,64, 14,40, -14,94, -16,64, -14,40,
+    8,34, 20,16, 34,2, -8,34, -20,16, -34,2
+  ],
+  // one-knee kneel for the belt ceremony: front foot planted, rear knee down, head bowed forward
+  kneelOne: [
+    8,52, 14,84, 20,104, 24,112,
+    22,78, 34,58, 44,44, -2,78, -8,58, 8,46,
+    12,48, 30,26, 46,2, -6,48, -22,4, -40,2
+  ],
   // ceremony
   shizentai: [
     0,92, 2,128, 3,160, 3,176,
@@ -180,11 +224,14 @@ const POSE_META = {
   walk1: { backArmFront: true },
   walk2: { backArmFront: true },
   oiZuki: { backArmFront: true },
-  ageUke: { backArmFront: true },
-  uchiUke: { backArmFront: true },
-  gedanBarai: { backArmFront: true },
+  oiZukiJodan: { backArmFront: true },
+  // uke: the blocking (far) forearm must read in FRONT of the body and legs, over the incoming limb
+  ageUke: { backArmFront: true, sweepFront: true },
+  uchiUke: { backArmFront: true, sweepFront: true },
+  gedanBarai: { backArmFront: true, sweepFront: true },
   mawashiChamber: { backLegFront: true },
   mawashiKick: { backLegFront: true },
+  mawashiKickChudan: { backLegFront: true },
   osotoReap: { backLegFront: true, depthLeg: true },
   haraiGoshi: { backLegFront: true, depthLeg: true },
 };
