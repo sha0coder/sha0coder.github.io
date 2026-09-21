@@ -140,7 +140,7 @@ const game = {
   mode: 'ippon',
   ippon: null,
   // the higher the level, the less time passes between the call and the CPU actually stepping in
-  ipponReactDelay: [0, 2.4, 1.1, 0.7, 0.62, 0.56, 0.5, 0.46, 0.42, 0.4, 0.38],
+  ipponReactDelay: [0, 2.6, 1.7, 1.3, 1.1, 0.95, 0.85, 0.75, 0.65, 0.55, 0.45],
   startExchange() {
     const attacker = this.ippon && this.ippon.attacker === 'cpu' ? 'p1' : 'cpu';
     const delay = this.ipponReactDelay[this.level] || 0.7;

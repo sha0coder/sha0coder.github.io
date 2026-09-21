@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Remote stack overflow over the air in Realtek RTW Wi-Fi drivers — crafted WPS beacon triggers stack corruption from radio range, no authentication.">
+    <title>Stack overflow over the air — Realtek RTW drivers — sha0coder</title>
+    <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav>
+    <div class="wrap">
+        <a class="logo" href="../">sha0<span>coder</span></a>
+        <ul>
+            <li><a href="../#projects">Projects</a></li>
+            <li><a href="../#writeups">Writeups</a></li>
+            <li><a href="../#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <div class="kicker">Writeup · Wi-Fi kernel vulnerability</div>
+        <h1>Stack overflow over the air</h1>
+        <p class="dim" style="font-size:19px;line-height:1.4;margin-bottom:6px;">
+        Remote stack overflow in Realtek RTW Wi-Fi drivers via a crafted WPS beacon &mdash;
+        no authentication, no association, no user interaction, radio range only.</p>
+        <p class="small dim"><time datetime="2026-09-21">Published 2026-09-21</time></p>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+
+        <h2>The bug</h2>
+        <p><code>rtw_get_wps_attr_content()</code> copies a WPS attribute's data into the
+        caller's buffer using the attribute's own <code>data_len</code> field (attacker-controlled,
+        up to 0xFFFF) <strong>with no destination-size check</strong>. On the Wi-Fi scan path,
+        the destination is <code>u8 sr = 0</code> &mdash; one byte on the stack.</p>
+
+<pre><code>/* rtw_ieee80211.c */
+memcpy(buf_content, attr_ptr + 4, attr_len - 4);   // no bound on destination
+
+/* ioctl_cfg80211.c — scan path */
+u8 sr = 0;                                          // 1 byte on the stack
+rtw_get_wps_attr_content(wpsie, wpsielen,
+    WPS_ATTR_SELECTED_REGISTRAR, &amp;sr, NULL);         // copies data_len bytes into &amp;sr</code></pre>
+
+        <p>A crafted beacon with a Selected Registrar attribute claiming <code>data_len=200</code>
+        overflows the stack during a normal Wi-Fi scan, with no user interaction beyond having
+        Wi-Fi enabled.</p>
+
+        <h2>Affected drivers</h2>
+        <p>The vulnerable function is Realtek vendor code shared across the entire RTW driver family:</p>
+
+        <table>
+            <tr><th>Driver</th><th>Location</th><th>Status</th></tr>
+            <tr><td><strong>rtl8723bs</strong></td><td><code>drivers/staging/rtl8723bs</code> (in-tree)</td><td>Patch posted</td></tr>
+            <tr><td><strong>rtl8812au</strong></td><td>aircrack-ng/rtl8812au (out-of-tree)</td><td>Vulnerable</td></tr>
+            <tr><td><strong>rtl8188eus</strong></td><td>aircrack-ng/rtl8188eus (out-of-tree)</td><td>Vulnerable</td></tr>
+            <tr><td><strong>rtl8723du</strong></td><td>lwfinger/rtl8723du (out-of-tree)</td><td>Vulnerable</td></tr>
+        </table>
+
+        <h3>Affected forks and packages</h3>
+        <ul>
+            <li><strong>aircrack-ng/rtl8812au</strong> (~3.9k stars) &mdash; packaged by Kali Linux as <code>realtek-rtl88xxau-dkms</code></li>
+            <li><strong>aircrack-ng/rtl8188eus</strong> (~1.1k stars)</li>
+            <li><strong>morrownr/8812au-20210820</strong></li>
+            <li><strong>lwfinger/rtl8188eus</strong></li>
+            <li><strong>lwfinger/rtl8723du</strong></li>
+            <li><strong>cilynx/rtl88x2bu</strong> &mdash; likely affected, same vendor code family</li>
+            <li><strong>Ubuntu 24.04 LTS</strong> &mdash; <code>rtl8812au-dkms</code> in universe</li>
+            <li><strong>Arch AUR</strong> &mdash; <code>rtl8812au-dkms-git</code></li>
+        </ul>
+
+        <h2>Proof</h2>
+
+        <h3>Emulation (mwemu)</h3>
+        <p>The overflow was originally found and verified with
+        <a href="https://github.com/mwemuorg/mwemu">mwemu</a> +
+        <a href="https://github.com/mwemuorg/kohunt">kohunt</a>, which loads the real compiled
+        <code>.ko</code> and drives <code>rtw_get_wps_attr_content</code> with a crafted WPS IE
+        against a 1-byte ledger-tracked destination. This was used to verify all in-tree kernel
+        drivers without needing physical hardware for each chipset.</p>
+
+        <h3>Hardware (rtl8812au)</h3>
+        <p>Hardware verification was performed on an <strong>RTL8812AU USB adapter</strong> using the
+        <a href="https://github.com/aircrack-ng/rtl8812au">aircrack-ng out-of-tree driver</a>,
+        Debian 12 bookworm, kernel 6.1.0-39-amd64.</p>
+
+        <p>A crafted beacon broadcast over the air triggers <code>__stack_chk_fail</code> and a
+        kernel panic:</p>
+
+        <img src="pics/kpanic.jpg" alt="Kernel panic triggered by crafted WPS beacon — stack-protector: Kernel stack is corrupted in _rtw_cfg80211_surveydone_event_callback" style="max-width:100%;">
+
+<pre><code>Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in:
+  _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau]
+
+Call Trace:
+ &lt;TASK&gt;
+ dump_stack_lvl+0x44/0x5c
+ panic+0x118/0x2f4
+ __stack_chk_fail+0x10/0x10
+ _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau]
+ rtw_cmd_thread+0x23a/0x510 [88XXau]
+ kthread+0xd7/0x100
+ ret_from_fork+0x1f/0x30
+ &lt;/TASK&gt;</code></pre>
+
+        <h2>Links</h2>
+        <ul>
+            <li><a href="https://lore.kernel.org/all/20260901091226.444666-1-sha0@badchecksum.net/">Kernel patch (v2)</a></li>
+            <li><a href="https://lore.kernel.org/linux-staging/20260920194948.214750-1-sha0@badchecksum.net/">Hardware test results</a></li>
+            <li><a href="https://github.com/aircrack-ng/rtl8812au/issues/1268">aircrack-ng issue #1268</a></li>
+            <li><a href="https://github.com/aircrack-ng/rtl8812au/pull/1269">Fix PR #1269</a></li>
+        </ul>
+
+        <h2>Note on trigger conditions</h2>
+        <p>The in-tree <code>rtl8723bs</code> driver (staging, loads with <code>TAINT_CRAP</code>)
+        calls <code>rtw_get_wps_attr_content()</code> unconditionally during scan result
+        processing &mdash; any automatic Wi-Fi scan triggers the overflow, zero click.
+        Per kernel policy, staging drivers are not treated as security issues; the fix
+        is handled through the normal patch process.</p>
+        <p>The aircrack-ng <code>rtl8812au</code> driver has an additional gate
+        (<code>rtw_cfg80211_is_target_wps_scan</code>) that requires the scan request to have
+        exactly <code>n_ssids=1</code>, <code>ssid_len&gt;0</code>, and <code>n_channels=1</code>.
+        Standard tools like <code>iw</code> and <code>NetworkManager</code> do not generate these
+        exact parameters in their periodic scans. The hardware test used a custom netlink scan
+        trigger to satisfy this condition. <code>wpa_supplicant</code> may send matching parameters
+        during WPS PBC (Push Button Connect) operations.</p>
+
+        <p class="dim">Found with <a href="https://github.com/mwemuorg/mwemu">mwemu</a> (kernel-mode
+        driver emulation) and source review. &mdash; Jesus Olmos
+        (<a href="https://github.com/sha0coder">@sha0coder</a>)</p>
+
+    </div>
+</main>
+
+</body>
+</html>

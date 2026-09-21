@@ -99,11 +99,11 @@ const P = {
     18,148, 36,130, 44,160, -6,150, -18,128, -12,102,
     10,82, 40,42, 40,2, -8,82, -32,40, -58,2
   ],
-  // gedan-barai: the sweeping (front/far) arm reaches well forward and across, so it clearly
-  // passes in front of an incoming mae-geri shin rather than tucking low behind the leg
+  // gedan-barai: a natural downward sweep whose forearm crosses in front at belt height to
+  // deflect an incoming mae-geri — drawn over the kick (sweepFront), not reaching past it
   gedanBarai: [
     0,82, 6,116, 8,148, 8,164,
-    18,146, 40,124, 62,102, -6,146, -18,126, -12,100,
+    18,146, 30,120, 48,98, -6,146, -18,126, -12,100,
     12,78, 46,42, 46,2, -8,78, -36,38, -64,2
   ],
   // judo (tori)

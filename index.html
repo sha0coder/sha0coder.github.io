@@ -115,14 +115,13 @@ kohunt init  /lib/modules/$(uname -r)/kernel   # sweep every module on the box</
         </div>
 
         <div class="card">
-            <h3><a href="rtl8723bs-wps/">A beacon, a scan, and one byte of stack</a></h3>
-            <p>Pointing the mwemu kernel-mode rig at a real, unmodified in-tree driver —
-            <code>drivers/staging/rtl8723bs</code>. A WPS attribute that lies about its length
-            turns a nearby beacon into a write past a one-byte stack variable, on the ordinary
-            Wi-Fi scan path. What emulation surfaces early, and where a human with the hardware
-            takes over. Reported upstream with a fix.</p>
+            <h3><a href="realtek/">Stack overflow over the air — Realtek RTW drivers</a></h3>
+            <p>Remote stack overflow in Realtek RTW Wi-Fi drivers via a crafted WPS beacon —
+            no authentication, no association, radio range only. Found with mwemu on the in-tree
+            <code>rtl8723bs</code>, verified on real hardware with the aircrack-ng
+            <code>rtl8812au</code>. Affects Kali, Ubuntu, and every fork of the RTW driver family.</p>
             <div class="links">
-                <a href="rtl8723bs-wps/">read</a>
+                <a href="realtek/">read</a>
             </div>
         </div>
 

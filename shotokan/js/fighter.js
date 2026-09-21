@@ -381,7 +381,7 @@ class AIController {
       // jiyu ippon kumite: the CPU only answers the player's single attack with an uke
       if (opp.state === 'attack' && opp.movePhase <= 1 && me.canAct && !me._reacted) {
         me._reacted = true;
-        const skill = [0, 0.4, 0.6, 0.8, 0.82, 0.85, 0.87, 0.9, 0.92, 0.94, 0.96][L] || 0.9;
+        const skill = [0, 0.4, 0.52, 0.6, 0.68, 0.74, 0.8, 0.85, 0.89, 0.93, 0.96][L] || 0.9;
         const lvl = opp.moveData.level;
         const right = lvl === 'jodan' ? 'age' : lvl === 'kick' ? 'gedan' : 'uchi';
         if (Math.random() < skill) me.setBlock(right);
@@ -393,15 +393,15 @@ class AIController {
       }
       return;
     }
-    const aggression = [0, 0.18, 0.4, 0.65, 0.7, 0.74, 0.78, 0.82, 0.85, 0.88, 0.92][L] || 0.7;
-    const blockSkill = [0, 0.35, 0.55, 0.75, 0.78, 0.8, 0.82, 0.85, 0.88, 0.9, 0.93][L] || 0.8;
+    const aggression = [0, 0.15, 0.28, 0.38, 0.48, 0.56, 0.64, 0.72, 0.8, 0.87, 0.93][L] || 0.7;
+    const blockSkill = [0, 0.3, 0.42, 0.52, 0.6, 0.67, 0.73, 0.79, 0.85, 0.9, 0.94][L] || 0.8;
     const dist = Math.abs(me.x - opp.x);
 
     // react to an incoming attack: sen (kizami-zuki into the step-in) at higher levels, or the right uke
     if (opp.state === 'attack' && opp.movePhase === 0 && me.canAct && dist < 150 * SCALE) {
       if (!me._reacted) {
         me._reacted = true;
-        const senChance = [0, 0, 0.2, 0.35, 0.4, 0.44, 0.48, 0.52, 0.56, 0.6, 0.64][L] || 0.4;
+        const senChance = [0, 0, 0.1, 0.16, 0.24, 0.32, 0.4, 0.47, 0.54, 0.6, 0.66][L] || 0.4;
         if (dist < 125 * SCALE && Math.random() < senChance) { me.startMove('kizamiZuki'); return; }
         if (Math.random() < blockSkill) {
           const lvl = opp.moveData.level;
@@ -419,9 +419,9 @@ class AIController {
 
     if (!me.canAct) return;
 
-    // from level 3: if the player camps in one uke, attack a height that block does NOT cover
+    // from level 4: if the player camps in one uke, attack a height that block does NOT cover
     this._openPunish = Math.max(0, (this._openPunish || 0) - dt);
-    if (L >= 3 && opp.state === 'block' && opp.blockHeld > 0.9 && this._openPunish <= 0 && dist < 200 * SCALE) {
+    if (L >= 4 && opp.state === 'block' && opp.blockHeld > 1.1 && this._openPunish <= 0 && dist < 200 * SCALE) {
       const bk = opp.blockKind;
       const pool = bk === 'uchi' ? ['gyakuZukiJodan', 'maeGeri', 'mawashiGeri']   // beat a chudan block: jodan or kick
         : bk === 'age' ? ['gyakuZuki', 'oiZuki', 'maeGeri']                        // beat a jodan block: chudan or kick
