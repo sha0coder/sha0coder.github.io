@@ -95,19 +95,26 @@ rtw_get_wps_attr_content(wpsie, wpsielen,
 
         <img src="pics/kpanic.jpg" alt="Kernel panic triggered by crafted WPS beacon — stack-protector: Kernel stack is corrupted in _rtw_cfg80211_surveydone_event_callback" style="max-width:100%;">
 
-<pre><code>Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in:
-  _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau]
-
-Call Trace:
- &lt;TASK&gt;
- dump_stack_lvl+0x44/0x5c
- panic+0x118/0x2f4
- __stack_chk_fail+0x10/0x10
- _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau]
- rtw_cmd_thread+0x23a/0x510 [88XXau]
- kthread+0xd7/0x100
- ret_from_fork+0x1f/0x30
- &lt;/TASK&gt;</code></pre>
+<pre><code>[ 2066.558409] Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau]
+[ 2066.560453] CPU: 5 PID: 8151 Comm: RTW_CMD_THREAD Tainted: P    OE    6.1.0-39-amd64 #1  Debian 6.1.148-1
+[ 2066.562495] Hardware name: Dell Inc. Precision 7510/02H5GH, BIOS 1.22.5 05/26/2021
+[ 2066.564135] Call Trace:
+[ 2066.564853]  &lt;TASK&gt;
+[ 2066.565569]  dump_stack_lvl+0x44/0x5c
+[ 2066.566296]  panic+0x118/0x2f4
+[ 2066.567020]  ? _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau]
+[ 2066.567817]  __stack_chk_fail+0x10/0x10
+[ 2066.568542]  _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau]
+[ 2066.569336]  ? mlme_evt_hdl+0x63/0x80 [88XXau]
+[ 2066.570107]  ? rtw_cmd_thread+0x23a/0x510 [88XXau]
+[ 2066.570865]  ? set_tx_beacon_cmd+0xd0/0xd0 [88XXau]
+[ 2066.571635]  ? rtw_stop_cmd_thread+0x50/0x50 [88XXau]
+[ 2066.572403]  ? kthread+0xd7/0x100
+[ 2066.573139]  ? kthread_complete_and_exit+0x20/0x20
+[ 2066.573867]  ? ret_from_fork+0x1f/0x30
+[ 2066.574570]  &lt;/TASK&gt;
+[ 2066.575327] Kernel Offset: 0xae00000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+[ 2067.487113] ---[ end Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: _rtw_cfg80211_surveydone_event_callback+0x257/0x260 [88XXau] ]---</code></pre>
 
         <h2>Links</h2>
         <ul>
@@ -115,6 +122,7 @@ Call Trace:
             <li><a href="https://lore.kernel.org/linux-staging/20260920194948.214750-1-sha0@badchecksum.net/">Hardware test results</a></li>
             <li><a href="https://github.com/aircrack-ng/rtl8812au/issues/1268">aircrack-ng issue #1268</a></li>
             <li><a href="https://github.com/aircrack-ng/rtl8812au/pull/1269">Fix PR #1269</a></li>
+            <li><a href="../rtl8723bs-wps/">Related writeup: A beacon, a scan, and one byte of stack</a></li>
         </ul>
 
         <h2>Note on trigger conditions</h2>

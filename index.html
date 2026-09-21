@@ -126,6 +126,18 @@ kohunt init  /lib/modules/$(uname -r)/kernel   # sweep every module on the box</
         </div>
 
         <div class="card">
+            <h3><a href="rtl8723bs-wps/">A beacon, a scan, and one byte of stack</a></h3>
+            <p>Pointing the mwemu kernel-mode rig at a real, unmodified in-tree driver —
+            <code>drivers/staging/rtl8723bs</code>. A WPS attribute that lies about its length
+            turns a nearby beacon into a write past a one-byte stack variable, on the ordinary
+            Wi-Fi scan path. What emulation surfaces early, and where a human with the hardware
+            takes over. Reported upstream with a fix.</p>
+            <div class="links">
+                <a href="rtl8723bs-wps/">read</a>
+            </div>
+        </div>
+
+        <div class="card">
             <h3><a href="driver-emulation/">A kernel without a kernel — catching a driver use-after-free</a></h3>
             <p>Loading a Linux <code>.ko</code> into <strong>mwemu</strong> — no real kernel,
             no root — and driving its ioctls until a deliberate use-after-free turns into a
